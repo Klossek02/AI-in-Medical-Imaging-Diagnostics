@@ -289,8 +289,9 @@ def preprocess_spine_output():
 
 if __name__ == "__main__":
    
-    # preprocess_spider()
+    preprocess_spider()
     preprocess_osf()
     preprocess_spine_output()
+
 
     print(f"Data saved in: {OUTPUT_DIR}")
