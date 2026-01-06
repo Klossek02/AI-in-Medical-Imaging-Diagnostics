@@ -2,4 +2,4 @@ Data
 data
 __pycache__
 wandb
-models
+/models
