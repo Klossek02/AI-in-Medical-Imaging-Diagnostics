@@ -54,6 +54,6 @@
     "wandb": {
         "project": "spine-segmentation"
     },
-    "preprocessedDataDir": "data/preprocessed_subset_10",
-    "runIdentifier": "TriConvUNext_lr_0.0001_wd_0.001_bs_8"
+    "preprocessedDataDir": "data/preprocessed_v2",
+    "runIdentifier": "TriConvUNext_augmentation_sweep"
 }
