@@ -80,14 +80,14 @@ def update_config_from_wandb(config: Config, wandb_config: dict):
     """
     # Update training config
     for key, value in wandb_config.items():
-        if key in SWEEPABLE_CONFIG_MAP:
+        if value and key in SWEEPABLE_CONFIG_MAP:
             setattr_nested(config, SWEEPABLE_CONFIG_MAP[key], value)
 
 def main():
     config = Config()
     parser = argparse.ArgumentParser(description="WandB Sweep Training Script")
     for key, value in SWEEPABLE_CONFIG_MAP.items():
-        parser.add_argument(f"--{key}", type=type(getattr_nested(config, value)), default=getattr_nested(config, value), help=f"{key} value")
+        parser.add_argument(f"--{key}", type=type(getattr_nested(config, value)), default=None, help=f"{key} value")
     parser.add_argument("--config", type=str, default=None, help="Config file path")
     args = parser.parse_args()
 
