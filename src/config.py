@@ -17,7 +17,7 @@ class TrainingConfig(dataclass_wizard.JSONWizard):
     num_epochs: int = 15
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     seed: Optional[int] = None
-    scheduler_type: Literal["ReduceLROnPlateau", "CosineAnnealingLR"] = "ReduceLROnPlateau"
+    scheduler_type: Literal["ReduceLROnPlateau", "CosineAnnealingLR", "StepLR"] = "ReduceLROnPlateau"
     scheduler_params: dict = dataclasses.field(default_factory=lambda: {"patience": 3, "factor": 0.5, "min_lr": 1e-6, "mode": "min"})
     loss_fn_type: Literal["DiceFocalLoss", "DiceLoss", "CrossEntropyLoss"] = "DiceFocalLoss"
     loss_fn_params: dict = dataclasses.field(default_factory=lambda: {"softmax": True, "to_onehot_y": True, "lambda_dice": 1.0, "lambda_focal": 2.0})
@@ -41,7 +41,7 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
     num_workers: int = 2
     val_split: float = 0.2
     test_split: float = 0.1
-    target_size: tuple[int, int] = (256, 256)
+    target_size: tuple[int, int] = (512, 512)
     distorsion_prob: float = 0.3
     distorsion_num_cells: int = 5
     distorsion_distort_limit: float = 0.03
@@ -77,6 +77,7 @@ class Config(dataclass_wizard.JSONWizard):
     model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
     wandb: WandBConfig = dataclasses.field(default_factory=WandBConfig)
     preprocessed_data_dir: str = "data/preprocessed_v2"
+    cache_dir: str = "data/cache"
     run_identifier: str = "default"
 
 # Generate default config when running python src/config.py

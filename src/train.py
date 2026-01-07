@@ -33,13 +33,17 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
     
     loop = tqdm(loader, desc="Training", leave=False)
     
-    for batch_idx, (images, masks) in enumerate(loop):
+    for batch_idx, subbatch in enumerate(loop):
+        images = torch.cat([data["image"] for data in subbatch], dim=0)
+        masks = torch.cat([data["label"] for data in subbatch], dim=0)
         images = images.to(device)
         masks = masks.to(device)
         
         # MONAI Loss requires channel dimension in mask: [B, 1, H, W]
         if masks.ndim == 3:
             masks = masks.unsqueeze(1)
+
+        masks[masks > 0] = 1
         
         # Forward pass
         outputs = model(images)
@@ -91,6 +95,9 @@ def validate(model, loader, loss_fn, device, vis_num=3):
             
             if masks.ndim == 3:
                 masks = masks.unsqueeze(1)
+
+            # mask binarization
+            masks[masks > 0] = 1
             
             outputs = model(images)
             loss = loss_fn(outputs, masks)

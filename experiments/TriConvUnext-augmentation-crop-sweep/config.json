@@ -28,8 +28,8 @@
         "valSplit": 0.2,
         "testSplit": 0.1,
         "targetSize": [
-            256,
-            256
+            512,
+            512
         ],
         "distorsionProb": 0.3,
         "distorsionNumCells": 5,
@@ -43,7 +43,13 @@
             2.0
         ],
         "rotationProb": 0.5,
-        "flipProb": 0.5
+        "flipProb": 0.5,
+        "cropSize": [
+            256,
+            256
+        ],
+        "cropPos": 1.0,
+        "cropNeg": 1.0
     },
     "model": {
         "modelType": "tri_conv_unext",

@@ -7,11 +7,9 @@ metric:
   name: val/dice
   goal: maximize
 parameters:
-  crop_num_samples:
-    values: [1, 2, 4]
   crop_pos:
     values: [1.0, 2.0]
   crop_size:
-    values: [[224, 224], [256, 256], [288, 288]]
+    values: [[256, 256], [384, 384]]
   config:
     value: "experiments/TriConvUnext-augmentation-crop-sweep/config.json"

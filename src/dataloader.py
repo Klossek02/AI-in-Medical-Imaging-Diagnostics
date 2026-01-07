@@ -5,7 +5,8 @@ import numpy as np
 from src.config import Config
 from src.preprocessing import preprocess_data
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
+from monai.data import Dataset, PersistentDataset
 from sklearn.model_selection import train_test_split
 
 from monai.transforms import ( # reference: https://docs.wandb.ai/models/tutorials/monai_3d_segmentation; https://oss-ai-ml-medical-segmentation.readthedocs.io/en/latest/MONAI%20Tutorials/3D%20Segmentation%20-%20Spleen.html
@@ -13,50 +14,14 @@ from monai.transforms import ( # reference: https://docs.wandb.ai/models/tutoria
     EnsureChannelFirstd,
     RandRotate90d,
     RandFlipd,
+    EnsureTyped,
     RandGaussianNoised,
     RandAdjustContrastd,
     RandGridDistortiond, 
     ToTensord,
     Resized,
+    LoadImaged,
     RandCropByPosNegLabeld)
-
-class SpineDataset(Dataset):
-    def __init__(self, config: Config, file_paths, transform=None):
-        self.config = config
-        self.file_paths = file_paths
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.file_paths)
-
-    def __getitem__(self, idx):
-        img_path = self.file_paths[idx]
-        mask_path = img_path.replace('images', 'masks')
-
-        try:
-            img_arr = np.load(img_path).astype(np.float32) # data normalized during preprocessing
-            mask_arr = np.load(mask_path).astype(np.uint8)
-
-        except Exception as e:
-            print(f"Error loading {img_path}: {e}")
-            return torch.zeros(1, *self.config.dataloader.target_size), torch.zeros(*self.config.dataloader.target_size).long() # returning empty tensors on error
-
-
-        # mask binarization
-        mask_arr[mask_arr > 0] = 1
-
-        data = {"image": img_arr, "label": mask_arr}
-
-        if self.transform:
-            data = self.transform(data)
-
-        image = data["image"]
-        mask = data["label"]
-        
-        mask = mask.long()
-
-        return image, mask
-
 
 
 def get_transforms(config: Config, mode="train"):
@@ -67,20 +32,21 @@ def get_transforms(config: Config, mode="train"):
 
     if mode == "train":
         return Compose([ # TRAINING TRANSFORMS (AUGMENTATIONS)
-
+            # load images and masks and adjust its types
+            LoadImaged(keys=["image", "label"]),
+            EnsureTyped(keys=["image"], dtype=np.float32),
+            EnsureTyped(keys=["label"], dtype=np.uint8),
             # we make sure that we have [channels (C), height (H), width (W)]
             EnsureChannelFirstd(keys=["image", "label"], channel_dim='no_channel'),
             
             # random crop by positive/negative label
+            Resized(keys=["image", "label"], spatial_size=config.dataloader.target_size, mode=("bilinear", "nearest")),
             RandCropByPosNegLabeld(keys=["image", "label"],
                 spatial_size=config.dataloader.crop_size,
                 pos=config.dataloader.crop_pos,
                 neg=config.dataloader.crop_neg,
                 num_samples=config.dataloader.crop_num_samples,
                 label_key="label"),
-            
-            Resized(keys=["image", "label"], spatial_size=config.dataloader.target_size, mode=("bilinear", "nearest")),
-            
             # rotations, reflections
             RandRotate90d(keys=["image", "label"], prob=config.dataloader.rotation_prob, spatial_axes=[0, 1]),
             RandFlipd(keys=["image", "label"], prob=config.dataloader.flip_prob, spatial_axis=1),
@@ -100,12 +66,13 @@ def get_transforms(config: Config, mode="train"):
             RandAdjustContrastd(keys=["image"],
                 prob=config.dataloader.contrast_prob,
                 gamma=config.dataloader.contrast_gamma),
-            
             ToTensord(keys=["image", "label"]),
         ])
     else: # VALIDATION AND TEST TRANSFORMS (NO AUGMENTATIONS!!!)
-        
         return Compose([ # only resizing and tensor conversion
+            LoadImaged(keys=["image", "label"]),
+            EnsureTyped(keys=["image"], dtype=np.float32),
+            EnsureTyped(keys=["label"], dtype=np.uint8),
             EnsureChannelFirstd(keys=["image", "label"], channel_dim='no_channel'),
             Resized(keys=["image", "label"], spatial_size=config.dataloader.target_size, mode=("bilinear", "nearest")),
             ToTensord(keys=["image", "label"]),
@@ -139,12 +106,23 @@ def get_dataloaders(config: Config):
     print(f"Split: training = {len(train_files)}, validation = {len(val_files)}, test = {len(test_files)}")
 
     # creating datasets
-    train_ds = SpineDataset(config, train_files, transform=get_transforms(config, "train"))
-    val_ds   = SpineDataset(config, val_files,   transform=get_transforms(config, "val"))
-    test_ds  = SpineDataset(config, test_files,  transform=get_transforms(config, "val"))
+    # train_ds = SpineDataset(config, train_files, transform=get_transforms(config, "train"))
+    # val_ds   = SpineDataset(config, val_files,   transform=get_transforms(config, "val"))
+    # test_ds  = SpineDataset(config, test_files,  transform=get_transforms(config, "val"))
+
+    # use cache dataset, make sure to load data as "label" and "image" like in SpineDataset
+    def load_data(path):
+        return {"image": path, "label": path.replace('images', 'masks')}
+    train_files = [load_data(path) for path in train_files]
+    val_files = [load_data(path) for path in val_files]
+    test_files = [load_data(path) for path in test_files]
+    
+    train_ds = Dataset(data=train_files, transform=get_transforms(config, "train"))
+    val_ds   = PersistentDataset(data=val_files, transform=get_transforms(config, "val"), cache_dir=config.cache_dir)
+    test_ds  = PersistentDataset(data=test_files, transform=get_transforms(config, "val"), cache_dir=config.cache_dir)
 
     # creating dataloaders
-    train_loader = DataLoader(train_ds, batch_size=config.dataloader.batch_size, shuffle=True, num_workers=config.dataloader.num_workers, pin_memory=True)
+    train_loader = DataLoader(train_ds, batch_size=config.dataloader.batch_size // config.dataloader.crop_num_samples, shuffle=True, num_workers=config.dataloader.num_workers, pin_memory=True)
     val_loader   = DataLoader(val_ds,   batch_size=config.dataloader.batch_size, shuffle=False, num_workers=config.dataloader.num_workers, pin_memory=True)
     test_loader  = DataLoader(test_ds,  batch_size=config.dataloader.batch_size, shuffle=False, num_workers=config.dataloader.num_workers, pin_memory=True)
 
@@ -166,7 +144,11 @@ if __name__ == "__main__":
     train_dl, val_dl, test_dl = get_dataloaders(config)
     
     # Test dataloader
-    images, masks = next(iter(train_dl))
+    data = next(iter(train_dl))
+    print(len(data))
+
+    images = torch.cat([d["image"] for d in data], dim=0)
+    masks = torch.cat([d["label"] for d in data], dim=0)
     
     print(f"Dataloader test successful!")
     print(f" Image shape: {images.shape}")

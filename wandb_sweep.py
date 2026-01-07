@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import ast
 import os
 import wandb
 from src.config import Config
@@ -23,9 +24,9 @@ SWEEPABLE_CONFIG_MAP: dict[str, str] = {
     'batch_size': 'dataloader.batch_size',
     'num_epochs': 'training.num_epochs',
     'scheduler_type': 'training.scheduler_type',
-    'scheduler_patience': 'training.scheduler_params.patience',
-    'scheduler_factor': 'training.scheduler_params.factor',
+    'scheduler_params': 'training.scheduler_params',
     'loss_fn_type': 'training.loss_fn_type',
+    'loss_fn_params': 'training.loss_fn_params',
     'model_type': 'model.model_type',
     'base_c': 'model.base_c',
     'early_stopping_patience': 'training.early_stopping_patience',
@@ -40,7 +41,6 @@ SWEEPABLE_CONFIG_MAP: dict[str, str] = {
     'contrast_gamma': 'dataloader.contrast_gamma',
     'rotation_prob': 'dataloader.rotation_prob',
     'flip_prob': 'dataloader.flip_prob',
-    'crop_num_samples': 'dataloader.crop_num_samples',
     'crop_size': 'dataloader.crop_size',
     'crop_pos': 'dataloader.crop_pos',
     'crop_neg': 'dataloader.crop_neg',
@@ -73,6 +73,35 @@ def setattr_nested(obj, path, value):
     else:
         setattr(obj, last, value)
 
+def parse_complex_type(value_str, expected_type):
+    """
+    Parse a string representation of a complex type (dict, tuple, list, etc.)
+    to the expected Python type.
+    
+    Args:
+        value_str: String representation of the value
+        expected_type: The expected Python type (e.g., dict, tuple)
+    
+    Returns:
+        Parsed value of the expected type
+    """
+    if value_str is None:
+        return None
+    
+    # If it's already the correct type, return as is
+    if isinstance(value_str, expected_type):
+        return value_str
+    
+    # Try to parse as a Python literal (dict, tuple, list, etc.)
+    try:
+        parsed = ast.literal_eval(value_str)
+        if isinstance(parsed, expected_type):
+            return parsed
+        else:
+            raise ValueError(f"Parsed value {parsed} is not of type {expected_type}")
+    except (ValueError, SyntaxError) as e:
+        raise argparse.ArgumentTypeError(f"Invalid {expected_type.__name__} value: {value_str}. Error: {e}")
+
 def update_config_from_wandb(config: Config, wandb_config: dict):
     """
     Updates config values from wandb.config.
@@ -91,7 +120,13 @@ def main():
     config = Config()
     parser = argparse.ArgumentParser(description="WandB Sweep Training Script")
     for key, value in SWEEPABLE_CONFIG_MAP.items():
-        parser.add_argument(f"--{key}", type=type(getattr_nested(config, value)), default=None, help=f"{key} value")
+        expected_type = type(getattr_nested(config, value))
+        # For complex types (dict, tuple, list), use a custom parser
+        if expected_type in (dict, tuple, list):
+            # Use default argument to capture expected_type in closure
+            parser.add_argument(f"--{key}", type=lambda x, et=expected_type: parse_complex_type(x, et), default=None, help=f"{key} value")
+        else:
+            parser.add_argument(f"--{key}", type=expected_type, default=None, help=f"{key} value")
     parser.add_argument("--config", type=str, default=None, help="Config file path")
     args = parser.parse_args()
 
