@@ -6,7 +6,7 @@ from src.config import Config
 from src.preprocessing import preprocess_data
 import torch
 from torch.utils.data import DataLoader
-from monai.data import Dataset, PersistentDataset
+from monai.data import Dataset, PersistentDataset, CacheDataset
 from sklearn.model_selection import train_test_split
 
 from monai.transforms import ( # reference: https://docs.wandb.ai/models/tutorials/monai_3d_segmentation; https://oss-ai-ml-medical-segmentation.readthedocs.io/en/latest/MONAI%20Tutorials/3D%20Segmentation%20-%20Spleen.html
@@ -74,7 +74,7 @@ def get_transforms(config: Config, mode="train"):
             EnsureTyped(keys=["image"], dtype=np.float32),
             EnsureTyped(keys=["label"], dtype=np.uint8),
             EnsureChannelFirstd(keys=["image", "label"], channel_dim='no_channel'),
-            Resized(keys=["image", "label"], spatial_size=config.dataloader.target_size, mode=("bilinear", "nearest")),
+            Resized(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("bilinear", "nearest")),
             ToTensord(keys=["image", "label"]),
         ])
 
@@ -105,12 +105,6 @@ def get_dataloaders(config: Config):
 
     print(f"Split: training = {len(train_files)}, validation = {len(val_files)}, test = {len(test_files)}")
 
-    # creating datasets
-    # train_ds = SpineDataset(config, train_files, transform=get_transforms(config, "train"))
-    # val_ds   = SpineDataset(config, val_files,   transform=get_transforms(config, "val"))
-    # test_ds  = SpineDataset(config, test_files,  transform=get_transforms(config, "val"))
-
-    # use cache dataset, make sure to load data as "label" and "image" like in SpineDataset
     def load_data(path):
         return {"image": path, "label": path.replace('images', 'masks')}
     train_files = [load_data(path) for path in train_files]
@@ -118,7 +112,7 @@ def get_dataloaders(config: Config):
     test_files = [load_data(path) for path in test_files]
     
     train_ds = Dataset(data=train_files, transform=get_transforms(config, "train"))
-    val_ds   = PersistentDataset(data=val_files, transform=get_transforms(config, "val"), cache_dir=config.cache_dir)
+    val_ds   = CacheDataset(data=val_files, transform=get_transforms(config, "val"), cache_rate=1.0, num_workers=config.dataloader.num_workers)
     test_ds  = PersistentDataset(data=test_files, transform=get_transforms(config, "val"), cache_dir=config.cache_dir)
 
     # creating dataloaders

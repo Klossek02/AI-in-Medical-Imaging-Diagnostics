@@ -89,7 +89,9 @@ def validate(model, loader, loss_fn, device, vis_num=3):
     visualized_predictions = []
     
     with torch.no_grad():
-        for images, masks in loader:
+        for batch in loader:
+            images = batch["image"]
+            masks = batch["label"]
             images = images.to(device)
             masks = masks.to(device)
             
