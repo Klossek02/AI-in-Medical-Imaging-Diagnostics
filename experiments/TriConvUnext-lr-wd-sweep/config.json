@@ -1,6 +1,6 @@
 {
     "training": {
-        "saveDir": "models/TriConvSweepv2",
+        "saveDir": "models/TriConvSweepv2-lr-wd",
         "earlyStoppingPatience": 3,
         "earlyStoppingDelta": 0.001,
         "learningRate": 0.0001,
@@ -56,5 +56,5 @@
         "project": "spine-segmentation"
     },
     "preprocessedDataDir": "data/preprocessed_v2",
-    "runIdentifier": "TriConvUNext_augmentation_sweep"
+    "runIdentifier": "TriConvUNext_lr_wd_sweep"
 }

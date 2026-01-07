@@ -1,0 +1,12 @@
+program: wandb_sweep.py
+method: bayes  # Options: grid, random, bayes
+metric:
+  name: val/dice
+  goal: maximize
+parameters:
+  learning_rate:
+    values: [1e-3, 3e-4, 1e-4]
+  weight_decay:
+    values: [0, 1e-4, 1e-3] 
+  config:
+    value: "experiments/TriConvUnext-lr-wd-sweep/config.json"

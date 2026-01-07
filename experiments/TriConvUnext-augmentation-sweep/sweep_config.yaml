@@ -7,10 +7,6 @@ metric:
   name: val/dice
   goal: maximize
 parameters:
-  learning_rate:
-    values: [3e-3, 1e-3, 3e-4]
-  weight_decay:
-    values: [0, 1e-3, 1e-2] 
   distorsion_prob:
     values: [0.3, 0.5]
   distorsion_num_cells:
@@ -19,5 +15,9 @@ parameters:
     values: [0.05, 0.07]
   contrast_prob:
     values: [0.3, 0.5]
+  noise_prob:
+    values: [0.1, 0.3]
+  noise_std:
+    values: [0.01, 0.05, 0.1]
   config:
     value: "experiments/TriConvUnext-augmentation-sweep/config.json"
