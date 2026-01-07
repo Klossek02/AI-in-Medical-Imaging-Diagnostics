@@ -17,7 +17,7 @@ from src.preprocessing import preprocess_data
 from src.dataloader import get_dataloaders
 from src.train import train
 
-SWEEPABLE_CONFIG_MAP = {
+SWEEPABLE_CONFIG_MAP: dict[str, str] = {
     'learning_rate': 'training.learning_rate',
     'weight_decay': 'training.weight_decay',
     'batch_size': 'dataloader.batch_size',
@@ -40,6 +40,10 @@ SWEEPABLE_CONFIG_MAP = {
     'contrast_gamma': 'dataloader.contrast_gamma',
     'rotation_prob': 'dataloader.rotation_prob',
     'flip_prob': 'dataloader.flip_prob',
+    'crop_num_samples': 'dataloader.crop_num_samples',
+    'crop_size': 'dataloader.crop_size',
+    'crop_pos': 'dataloader.crop_pos',
+    'crop_neg': 'dataloader.crop_neg',
 }
 
 def getattr_nested(obj, path, default=None):

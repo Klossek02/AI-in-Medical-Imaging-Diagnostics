@@ -3,16 +3,14 @@
         "saveDir": "models/TriConvSweepv2-lr-wd",
         "earlyStoppingPatience": 3,
         "earlyStoppingDelta": 0.001,
-        "learningRate": 0.0001,
+        "learningRate": 0.001,
         "weightDecay": 0.001,
         "numEpochs": 25,
         "seed": 12,
-        "schedulerType": "ReduceLROnPlateau",
+        "schedulerType": "StepLR",
         "schedulerParams": {
-            "patience": 2,
-            "factor": 0.5,
-            "min_lr": 1e-06,
-            "mode": "min"
+            "step_size": 1,
+            "gamma": 0.9999
         },
         "lossFnType": "DiceFocalLoss"
     },

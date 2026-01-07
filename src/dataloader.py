@@ -17,7 +17,8 @@ from monai.transforms import ( # reference: https://docs.wandb.ai/models/tutoria
     RandAdjustContrastd,
     RandGridDistortiond, 
     ToTensord,
-    Resized)
+    Resized,
+    RandCropByPosNegLabeld)
 
 class SpineDataset(Dataset):
     def __init__(self, config: Config, file_paths, transform=None):
@@ -69,6 +70,15 @@ def get_transforms(config: Config, mode="train"):
 
             # we make sure that we have [channels (C), height (H), width (W)]
             EnsureChannelFirstd(keys=["image", "label"], channel_dim='no_channel'),
+            
+            # random crop by positive/negative label
+            RandCropByPosNegLabeld(keys=["image", "label"],
+                spatial_size=config.dataloader.crop_size,
+                pos=config.dataloader.crop_pos,
+                neg=config.dataloader.crop_neg,
+                num_samples=config.dataloader.crop_num_samples,
+                label_key="label"),
+            
             Resized(keys=["image", "label"], spatial_size=config.dataloader.target_size, mode=("bilinear", "nearest")),
             
             # rotations, reflections

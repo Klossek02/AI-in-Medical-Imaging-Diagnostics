@@ -24,5 +24,11 @@ def get_scheduler(optimizer, config: Config):
             T_max=config.training.num_epochs,
             **{k: v for k, v in config.training.scheduler_params.items() if k != 'patience' and k != 'mode'}
         )
+    elif config.training.scheduler_type == "StepLR":
+        return optim.lr_scheduler.StepLR(
+            optimizer,
+            step_size=config.training.scheduler_params['step_size'],
+            gamma=config.training.scheduler_params['gamma']
+        )
     else:
         raise ValueError(f"Unknown scheduler type: {config.training.scheduler_type}")

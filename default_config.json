@@ -61,7 +61,14 @@
             2.0
         ],
         "rotationProb": 0.5,
-        "flipProb": 0.5
+        "flipProb": 0.5,
+        "cropSize": [
+            256,
+            256
+        ],
+        "cropPos": 1.0,
+        "cropNeg": 1.0,
+        "cropNumSamples": 4
     },
     "model": {
         "modelType": "tri_conv_unext",
@@ -69,6 +76,9 @@
         "classes": 2,
         "baseC": 32,
         "bilinear": true
+    },
+    "wandb": {
+        "project": "spine-segmentation"
     },
     "preprocessedDataDir": "data/preprocessed_v2",
     "runIdentifier": "default"

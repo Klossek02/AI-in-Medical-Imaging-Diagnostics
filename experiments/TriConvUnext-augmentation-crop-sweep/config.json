@@ -1,6 +1,6 @@
 {
     "training": {
-        "saveDir": "models/TriConvSweepv2",
+        "saveDir": "models/TriConvSweepv2-crop",
         "earlyStoppingPatience": 3,
         "earlyStoppingDelta": 0.001,
         "learningRate": 0.001,
