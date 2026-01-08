@@ -103,7 +103,7 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
             masks[masks > 0] = 1
             
             sw_batch_size = (config.dataloader.target_size[0] // config.dataloader.crop_size[0] + 1)**2 # +1 for overlap
-            outputs = sliding_window_inference(inputs=images, predictor=model, roi_size=config.dataloader.crop_size, sw_batch_size=sw_batch_size, overlap=config.dataloader.sw_overlap)
+            outputs = sliding_window_inference(inputs=images, predictor=model, roi_size=config.dataloader.crop_size, sw_batch_size=sw_batch_size, overlap=config.dataloader.sw_overlap, mode="gaussian")
             loss = loss_fn(outputs, masks)
             
             preds = torch.argmax(outputs, dim=1)
