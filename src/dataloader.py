@@ -41,13 +41,15 @@ def get_transforms(config: Config, mode="train"):
             EnsureChannelFirstd(keys=["image", "label"], channel_dim='no_channel'),
             
             # random crop by positive/negative label
-            Resized(keys=["image", "label"], spatial_size=config.dataloader.target_size, mode=("bilinear", "nearest")),
+            # Resized(keys=["image", "label"], spatial_size=config.dataloader.target_size, mode=("bilinear", "nearest")),
             RandCropByPosNegLabeld(keys=["image", "label"],
                 spatial_size=config.dataloader.crop_size,
                 pos=config.dataloader.crop_pos,
                 neg=config.dataloader.crop_neg,
                 num_samples=config.dataloader.crop_num_samples,
+                allow_smaller=True,
                 label_key="label"),
+            SpatialPadd(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("constant", "minimum")),
             # rotations, reflections
             RandRotate90d(keys=["image", "label"], prob=config.dataloader.rotation_prob, spatial_axes=[0, 1]),
             RandFlipd(keys=["image", "label"], prob=config.dataloader.flip_prob, spatial_axis=1),
@@ -75,7 +77,8 @@ def get_transforms(config: Config, mode="train"):
             EnsureTyped(keys=["image"], dtype=np.float32),
             EnsureTyped(keys=["label"], dtype=np.uint8),
             EnsureChannelFirstd(keys=["image", "label"], channel_dim='no_channel'),
-            Resized(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("bilinear", "nearest")),
+            SpatialPadd(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("constant", "minimum")),
+            # Resized(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("bilinear", "nearest")),
             ToTensord(keys=["image", "label"]),
         ])
 

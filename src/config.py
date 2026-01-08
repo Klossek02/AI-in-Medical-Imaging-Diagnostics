@@ -41,6 +41,7 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
     num_workers: int = 2
     val_split: float = 0.2
     test_split: float = 0.1
+    # remember to delete it if sw would work well
     target_size: tuple[int, int] = (512, 512)
     distorsion_prob: float = 0.3
     distorsion_num_cells: int = 5
@@ -52,7 +53,7 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
     contrast_gamma: tuple[float, float] = (0.5, 2.0)
     rotation_prob: float = 0.5
     flip_prob: float = 0.5
-    crop_size: tuple[int, int] = (448, 448)
+    crop_size: tuple[int, int] = (512, 512)
     crop_pos: float = 1.0
     crop_neg: float = 1.0
     crop_num_samples: int = 1

@@ -45,10 +45,10 @@
         "rotationProb": 0.5,
         "flipProb": 0.5,
         "cropSize": [
-            448,
-            448
+            512,
+            512
         ],
-        "cropPos": 1.0,
+        "cropPos": 2.0,
         "cropNeg": 1.0,
         "cropNumSamples": 1
     },
