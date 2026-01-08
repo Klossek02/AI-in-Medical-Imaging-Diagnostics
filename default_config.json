@@ -27,7 +27,7 @@
     "preprocessing": {
         "spiderPath": "data/SPIDER",
         "spiderPrefix": "SPIDER",
-        "spiderImagesPath": "data/SPIDER/images/images",
+        "spiderImagesPath": "data/SPIDER/images",
         "spiderMasksPath": "data/SPIDER/masks",
         "osfPath": "data/osf-files",
         "osfPrefix": "OSF",
@@ -77,7 +77,7 @@
     "wandb": {
         "project": "spine-segmentation"
     },
-    "preprocessedDataDir": "data/preprocessed_v2",
+    "preprocessedDataDir": "data/preprocessed_v3",
     "cacheDir": "data/cache",
     "runIdentifier": "default"
 }

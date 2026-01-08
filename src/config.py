@@ -1,5 +1,6 @@
 import dataclasses
 import dataclass_wizard
+import json
 import torch
 from typing import Optional, Literal
 from src.models import models
@@ -26,7 +27,7 @@ class TrainingConfig(dataclass_wizard.JSONWizard):
 class PreprocessingConfig(dataclass_wizard.JSONWizard):
     spider_path: str = "data/SPIDER"
     spider_prefix: str = "SPIDER"
-    spider_images_path: str = "data/SPIDER/images/images"
+    spider_images_path: str = "data/SPIDER/images"
     spider_masks_path: str = "data/SPIDER/masks"
     osf_path: str = "data/osf-files"
     osf_prefix: str = "OSF"
@@ -76,7 +77,7 @@ class Config(dataclass_wizard.JSONWizard):
     dataloader: DataLoaderConfig = dataclasses.field(default_factory=DataLoaderConfig)
     model: ModelConfig = dataclasses.field(default_factory=ModelConfig)
     wandb: WandBConfig = dataclasses.field(default_factory=WandBConfig)
-    preprocessed_data_dir: str = "data/preprocessed_v2"
+    preprocessed_data_dir: str = "data/preprocessed_v3"
     cache_dir: str = "data/cache"
     run_identifier: str = "default"
 
@@ -84,4 +85,5 @@ class Config(dataclass_wizard.JSONWizard):
 if __name__ == "__main__":
     config = Config()
     with open("default_config.json", "w") as f:
-        f.write(config.to_json())
+        # format it with 4 spaces
+        f.write(config.to_json(encoder=lambda x: json.dumps(x, indent=4)))
