@@ -45,11 +45,12 @@
         "rotationProb": 0.5,
         "flipProb": 0.5,
         "cropSize": [
-            256,
-            256
+            448,
+            448
         ],
         "cropPos": 1.0,
-        "cropNeg": 1.0
+        "cropNeg": 1.0,
+        "cropNumSamples": 1
     },
     "model": {
         "modelType": "tri_conv_unext",

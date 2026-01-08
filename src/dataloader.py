@@ -20,6 +20,7 @@ from monai.transforms import ( # reference: https://docs.wandb.ai/models/tutoria
     RandGridDistortiond, 
     ToTensord,
     Resized,
+    SpatialPadd,
     LoadImaged,
     RandCropByPosNegLabeld)
 
@@ -139,10 +140,12 @@ if __name__ == "__main__":
     
     # Test dataloader
     data = next(iter(train_dl))
-    print(len(data))
-
-    images = torch.cat([d["image"] for d in data], dim=0)
-    masks = torch.cat([d["label"] for d in data], dim=0)
+    if isinstance(data, dict):
+        images = data["image"]
+        masks = data["label"]
+    else:
+        images = torch.cat([d["image"] for d in data], dim=0)
+        masks = torch.cat([d["label"] for d in data], dim=0)
     
     print(f"Dataloader test successful!")
     print(f" Image shape: {images.shape}")

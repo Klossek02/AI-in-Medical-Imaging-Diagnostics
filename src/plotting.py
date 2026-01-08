@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import wandb
 import os
 from typing import List, Tuple
 import numpy as np
@@ -63,3 +64,9 @@ def visualize_predictions(predictions: List[Tuple[np.ndarray, np.ndarray, np.nda
         plt.subplot(1, 3, 3); plt.imshow(pred, cmap='gray'); plt.title("Prediction")
         plt.savefig(os.path.join(save_path, f"prediction_{i+1}.png"))
         plt.close()
+    
+    # upload to wandb
+    if wandb.is_initialized():
+        wandb.log({
+            "predictions": [wandb.Image(os.path.join(save_path, f"prediction_{i+1}.png")) for i in range(len(predictions))]
+        })

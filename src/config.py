@@ -52,10 +52,10 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
     contrast_gamma: tuple[float, float] = (0.5, 2.0)
     rotation_prob: float = 0.5
     flip_prob: float = 0.5
-    crop_size: tuple[int, int] = (256, 256)
+    crop_size: tuple[int, int] = (448, 448)
     crop_pos: float = 1.0
     crop_neg: float = 1.0
-    crop_num_samples: int = 4
+    crop_num_samples: int = 1
     sw_overlap: float = 0.5
 
 @dataclasses.dataclass
