@@ -11,6 +11,7 @@ from src.optimizer import get_optimizer
 from src.scheduler import get_scheduler
 from torch.utils.data import DataLoader
 from monai.utils import set_determinism
+from monai.inferers import sliding_window_inference
 
 def train_one_epoch(model, loader, optimizer, loss_fn, device):
     """
@@ -66,7 +67,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
     
     return epoch_loss / len(loader), epoch_dice / len(loader), epoch_acc / len(loader)
 
-def validate(model, loader, loss_fn, device, vis_num=3):
+def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
     """
     Validates the model on validation data and visualizes few examples of predictions.
     
@@ -101,7 +102,8 @@ def validate(model, loader, loss_fn, device, vis_num=3):
             # mask binarization
             masks[masks > 0] = 1
             
-            outputs = model(images)
+            sw_batch_size = config.dataloader.target_size[0] // config.dataloader.crop_size[0] + 1 # +1 for overlap
+            outputs = sliding_window_inference(images, model, config.dataloader.crop_size, config.dataloader.sw_overlap, sw_batch_size)
             loss = loss_fn(outputs, masks)
             
             preds = torch.argmax(outputs, dim=1)
@@ -140,7 +142,7 @@ def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, devi
 
     # Validate
     test_pred_path = os.path.join(save_dir, "test_predictions")
-    test_loss, test_dice, test_acc, visualized_predictions = validate(model, test_loader, loss_fn, device, vis_num)
+    test_loss, test_dice, test_acc, visualized_predictions = validate(model, test_loader, loss_fn, device, config, vis_num)
     visualize_predictions(visualized_predictions, test_pred_path)
     # Save test metrics to csv
     test_metrics_df = pd.DataFrame([{
@@ -214,7 +216,7 @@ def train(
         
         # Validate
         v_loss, v_dice, v_acc, visualized_predictions = validate(
-            model, val_loader, loss_fn, device, vis_num=config.training.vis_num
+            model, val_loader, loss_fn, device, config, vis_num=config.training.vis_num
         )
 
         # Visualize predictions

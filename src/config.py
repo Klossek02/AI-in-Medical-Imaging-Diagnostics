@@ -56,6 +56,7 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
     crop_pos: float = 1.0
     crop_neg: float = 1.0
     crop_num_samples: int = 4
+    sw_overlap: float = 0.5
 
 @dataclasses.dataclass
 class ModelConfig(dataclass_wizard.JSONWizard):
