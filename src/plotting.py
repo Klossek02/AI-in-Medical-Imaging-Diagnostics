@@ -66,7 +66,6 @@ def visualize_predictions(predictions: List[Tuple[np.ndarray, np.ndarray, np.nda
         plt.close()
     
     # upload to wandb
-    if wandb.is_initialized():
-        wandb.log({
-            "predictions": [wandb.Image(os.path.join(save_path, f"prediction_{i+1}.png")) for i in range(len(predictions))]
-        })
+    wandb.log({
+        "predictions": [wandb.Image(os.path.join(save_path, f"prediction_{i+1}.png")) for i in range(len(predictions))]
+    })
