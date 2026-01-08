@@ -19,10 +19,43 @@ from monai.transforms import ( # reference: https://docs.wandb.ai/models/tutoria
     RandAdjustContrastd,
     RandGridDistortiond, 
     ToTensord,
-    Resized,
-    SpatialPadd,
+    ResizeWithPadOrCropd,
     LoadImaged,
     RandCropByPosNegLabeld)
+
+
+def collate_fn(batch):
+    """
+    Custom collate function as a safety net for dtype consistency.
+    ResizeWithPadOrCropd in transforms should ensure all tensors have the same size,
+    but we ensure dtype consistency here as well.
+    """
+    images = []
+    labels = []
+    
+    for item in batch:
+        if isinstance(item, dict):
+            img = item["image"]
+            lbl = item["label"]
+        else:
+            img = torch.cat([d["image"] for d in item], dim=0)
+            lbl = torch.cat([d["label"] for d in item], dim=0)
+        
+        # Ensure consistent dtype (safety net - transforms should handle this)
+        if img.dtype != torch.float32:
+            img = img.float()
+        if lbl.dtype != torch.long:
+            # Handle uint8 -> long conversion
+            lbl = lbl.long()
+        
+        images.append(img)
+        labels.append(lbl)
+    
+    # Stack into batch tensors (should work since ResizeWithPadOrCropd ensures same sizes)
+    images = torch.stack(images, dim=0)
+    labels = torch.stack(labels, dim=0)
+    
+    return {"image": images, "label": labels}
 
 
 def get_transforms(config: Config, mode="train"):
@@ -41,7 +74,6 @@ def get_transforms(config: Config, mode="train"):
             EnsureChannelFirstd(keys=["image", "label"], channel_dim='no_channel'),
             
             # random crop by positive/negative label
-            # Resized(keys=["image", "label"], spatial_size=config.dataloader.target_size, mode=("bilinear", "nearest")),
             RandCropByPosNegLabeld(keys=["image", "label"],
                 spatial_size=config.dataloader.crop_size,
                 pos=config.dataloader.crop_pos,
@@ -49,7 +81,8 @@ def get_transforms(config: Config, mode="train"):
                 num_samples=config.dataloader.crop_num_samples,
                 allow_smaller=True,
                 label_key="label"),
-            SpatialPadd(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("constant", "minimum")),
+            # ResizeWithPadOrCropd ensures exact size (better than SpatialPadd which only pads to minimum)
+            ResizeWithPadOrCropd(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("constant", "constant")),
             # rotations, reflections
             RandRotate90d(keys=["image", "label"], prob=config.dataloader.rotation_prob, spatial_axes=[0, 1]),
             RandFlipd(keys=["image", "label"], prob=config.dataloader.flip_prob, spatial_axis=1),
@@ -69,16 +102,18 @@ def get_transforms(config: Config, mode="train"):
             RandAdjustContrastd(keys=["image"],
                 prob=config.dataloader.contrast_prob,
                 gamma=config.dataloader.contrast_gamma),
+            # Convert to tensors (dtype conversion to torch.long for labels happens in collate_fn)
             ToTensord(keys=["image", "label"]),
         ])
-    else: # VALIDATION AND TEST TRANSFORMS (NO AUGMENTATIONS!!!)
+    else: # VALIDATION AND TEST TRANSFORMS (NO AUGMENTATIONS!!!) 
         return Compose([ # only resizing and tensor conversion
             LoadImaged(keys=["image", "label"]),
             EnsureTyped(keys=["image"], dtype=np.float32),
             EnsureTyped(keys=["label"], dtype=np.uint8),
             EnsureChannelFirstd(keys=["image", "label"], channel_dim='no_channel'),
-            SpatialPadd(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("constant", "minimum")),
-            # Resized(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("bilinear", "nearest")),
+            # ResizeWithPadOrCropd ensures exact size (better than SpatialPadd which only pads to minimum)
+            ResizeWithPadOrCropd(keys=["image", "label"], spatial_size=config.dataloader.crop_size, mode=("constant", "constant")),
+            # Convert to tensors (dtype conversion to torch.long for labels happens in collate_fn)
             ToTensord(keys=["image", "label"]),
         ])
 
@@ -119,10 +154,10 @@ def get_dataloaders(config: Config):
     val_ds   = CacheDataset(data=val_files, transform=get_transforms(config, "val"), cache_rate=1.0, num_workers=config.dataloader.num_workers)
     test_ds  = PersistentDataset(data=test_files, transform=get_transforms(config, "val"), cache_dir=config.cache_dir)
 
-    # creating dataloaders
-    train_loader = DataLoader(train_ds, batch_size=config.dataloader.batch_size // config.dataloader.crop_num_samples, shuffle=True, num_workers=config.dataloader.num_workers, pin_memory=True)
-    val_loader   = DataLoader(val_ds,   batch_size=config.dataloader.batch_size, shuffle=False, num_workers=config.dataloader.num_workers, pin_memory=True)
-    test_loader  = DataLoader(test_ds,  batch_size=config.dataloader.batch_size, shuffle=False, num_workers=config.dataloader.num_workers, pin_memory=True)
+    # creating dataloaders with custom collate function
+    train_loader = DataLoader(train_ds, batch_size=config.dataloader.batch_size // config.dataloader.crop_num_samples, shuffle=True, num_workers=config.dataloader.num_workers, pin_memory=True, collate_fn=collate_fn)
+    val_loader   = DataLoader(val_ds,   batch_size=config.dataloader.batch_size, shuffle=False, num_workers=config.dataloader.num_workers, pin_memory=True, collate_fn=collate_fn)
+    test_loader  = DataLoader(test_ds,  batch_size=config.dataloader.batch_size, shuffle=False, num_workers=config.dataloader.num_workers, pin_memory=True, collate_fn=collate_fn)
 
     return train_loader, val_loader, test_loader
 
@@ -142,15 +177,18 @@ if __name__ == "__main__":
     train_dl, val_dl, test_dl = get_dataloaders(config)
     
     # Test dataloader
-    data = next(iter(train_dl))
-    if isinstance(data, dict):
+    try:
+        data = next(iter(train_dl))
         images = data["image"]
         masks = data["label"]
-    else:
-        images = torch.cat([d["image"] for d in data], dim=0)
-        masks = torch.cat([d["label"] for d in data], dim=0)
-    
-    print(f"Dataloader test successful!")
-    print(f" Image shape: {images.shape}")
-    print(f" Shape masks: {masks.shape} ")
-    print(f" Mask type: {masks.dtype}")
+        
+        print(f"Dataloader test successful!")
+        print(f" Image shape: {images.shape}")
+        print(f" Image dtype: {images.dtype}")
+        print(f" Mask shape: {masks.shape}")
+        print(f" Mask dtype: {masks.dtype}")
+        print(f" Image value range: [{images.min().item():.4f}, {images.max().item():.4f}]")
+        print(f" Mask value range: [{masks.min().item()}, {masks.max().item()}]")
+    except Exception as e:
+        print(f"Dataloader test failed with error: {e}")
+        raise

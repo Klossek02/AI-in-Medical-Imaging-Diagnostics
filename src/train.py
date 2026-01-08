@@ -35,12 +35,8 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
     loop = tqdm(loader, desc="Training", leave=False)
     
     for batch_idx, subbatch in enumerate(loop):
-        if isinstance(subbatch, dict):
-            images = subbatch["image"]
-            masks = subbatch["label"]
-        else:
-            images = torch.cat([data["image"] for data in subbatch], dim=0)
-            masks = torch.cat([data["label"] for data in subbatch], dim=0)
+        images = subbatch["image"]
+        masks = subbatch["label"]
         images = images.to(device)
         masks = masks.to(device)
         

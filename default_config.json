@@ -1,1 +1,87 @@
-{"training": {"saveDir": "models", "visNum": 3, "earlyStoppingPatience": 3, "earlyStoppingDelta": 0.001, "learningRate": 0.0001, "weightDecay": 0.001, "numEpochs": 15, "device": "cpu", "seed": null, "schedulerType": "ReduceLROnPlateau", "schedulerParams": {"patience": 3, "factor": 0.5, "min_lr": 1e-06, "mode": "min"}, "lossFnType": "DiceFocalLoss", "lossFnParams": {"softmax": true, "to_onehot_y": true, "lambda_dice": 1.0, "lambda_focal": 2.0}}, "preprocessing": {"spiderPath": "data/SPIDER", "spiderPrefix": "SPIDER", "spiderImagesPath": "data/SPIDER/images/images", "spiderMasksPath": "data/SPIDER/masks", "osfPath": "data/osf-files", "osfPrefix": "OSF", "spineOutputPath": "data/spine_output", "spineOutputPrefix": "Spine_Output", "targetSpacing": [1.0, 1.0, 1.0], "minPixelsMask": 50}, "dataloader": {"batchSize": 8, "numWorkers": 2, "valSplit": 0.2, "testSplit": 0.1, "targetSize": [512, 512], "distorsionProb": 0.3, "distorsionNumCells": 5, "distorsionDistortLimit": 0.03, "noiseProb": 0.1, "noiseMean": 0.0, "noiseStd": 0.1, "contrastProb": 0.2, "contrastGamma": [0.5, 2.0], "rotationProb": 0.5, "flipProb": 0.5, "cropSize": [512, 512], "cropPos": 1.0, "cropNeg": 1.0, "cropNumSamples": 1, "swOverlap": 0.5}, "model": {"modelType": "tri_conv_unext", "inChannels": 1, "classes": 2, "baseC": 32, "bilinear": true}, "wandb": {"project": "spine-segmentation"}, "preprocessedDataDir": "data/preprocessed_v2", "cacheDir": "data/cache", "runIdentifier": "default"}
+{
+    "training": {
+        "saveDir": "models",
+        "visNum": 3,
+        "earlyStoppingPatience": 3,
+        "earlyStoppingDelta": 0.001,
+        "learningRate": 0.0001,
+        "weightDecay": 0.001,
+        "numEpochs": 15,
+        "device": "cpu",
+        "seed": null,
+        "schedulerType": "ReduceLROnPlateau",
+        "schedulerParams": {
+            "patience": 3,
+            "factor": 0.5,
+            "min_lr": 1e-06,
+            "mode": "min"
+        },
+        "lossFnType": "DiceFocalLoss",
+        "lossFnParams": {
+            "softmax": true,
+            "to_onehot_y": true,
+            "lambda_dice": 1.0,
+            "lambda_focal": 2.0
+        }
+    },
+    "preprocessing": {
+        "spiderPath": "data/SPIDER",
+        "spiderPrefix": "SPIDER",
+        "spiderImagesPath": "data/SPIDER/images/images",
+        "spiderMasksPath": "data/SPIDER/masks",
+        "osfPath": "data/osf-files",
+        "osfPrefix": "OSF",
+        "spineOutputPath": "data/spine_output",
+        "spineOutputPrefix": "Spine_Output",
+        "targetSpacing": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "minPixelsMask": 50
+    },
+    "dataloader": {
+        "batchSize": 32,
+        "numWorkers": 2,
+        "valSplit": 0.01,
+        "testSplit": 0.98,
+        "targetSize": [
+            512,
+            512
+        ],
+        "distorsionProb": 0.3,
+        "distorsionNumCells": 5,
+        "distorsionDistortLimit": 0.03,
+        "noiseProb": 0.1,
+        "noiseMean": 0.0,
+        "noiseStd": 0.1,
+        "contrastProb": 0.2,
+        "contrastGamma": [
+            0.5,
+            2.0
+        ],
+        "rotationProb": 0.5,
+        "flipProb": 0.5,
+        "cropSize": [
+            512,
+            512
+        ],
+        "cropPos": 1.0,
+        "cropNeg": 1.0,
+        "cropNumSamples": 1,
+        "swOverlap": 0.5
+    },
+    "model": {
+        "modelType": "tri_conv_unext",
+        "inChannels": 1,
+        "classes": 2,
+        "baseC": 32,
+        "bilinear": true
+    },
+    "wandb": {
+        "project": "spine-segmentation"
+    },
+    "preprocessedDataDir": "data/preprocessed_v2",
+    "cacheDir": "data/cache",
+    "runIdentifier": "default"
+}
