@@ -11,7 +11,8 @@ from src.config import Config
 def preprocess_data(config: Config) -> int:
     processed_count = 0
     processed_count += preprocess_spider(config)
-    processed_count += preprocess_osf(config)
+    # we decided to not use osf dataset, since it do not have spinal canal and C6/C7 labels
+    # processed_count += preprocess_osf(config)
     processed_count += preprocess_spine_output(config)
     print(f"Processed {processed_count} images")
     return processed_count
@@ -20,7 +21,7 @@ def preprocess_spider(config: Config) -> int:
     if not print_info_and_early_return(config, config.preprocessing.spider_prefix, config.preprocessing.spider_path):
         return 0
     
-    image_files = glob.glob(os.path.join(config.preprocessing.spider_path, "*.mha"))
+    image_files = glob.glob(os.path.join(config.preprocessing.spider_images_path, "*.mha"))
 
     processed_count = 0
 
@@ -29,12 +30,24 @@ def preprocess_spider(config: Config) -> int:
         filename = os.path.basename(img_path)
 
         if "t2" not in filename.lower(): continue 
-        mask_path = os.path.join(config.preprocessing.spider_path, "masks", filename)
+        mask_path = os.path.join(config.preprocessing.spider_masks_path, filename)
 
         if os.path.exists(mask_path):
             try:
                 img = sitk.ReadImage(img_path)
                 mask = sitk.ReadImage(mask_path)
+                # change mask to 1 for [1,25] and [101,125], to 2 for [100,100] and to 3 for [201,225] in sitk
+                # fully visible vertebrae
+                mask_1 = sitk.BinaryThreshold(mask, 1, 25, 1, 0)
+                # partially visible vertebrae
+                # mask_2 = sitk.BinaryThreshold(mask, 101, 125, 1, 0)
+                # spinal canal
+                mask_3 = sitk.BinaryThreshold(mask, 100, 100, 2, 0)
+                # intervertebral discs
+                mask_4 = sitk.BinaryThreshold(mask, 201, 225, 3, 0)
+                mask = sitk.Add(mask_1, mask_3) # 1 or 2
+                # mask = sitk.Add(mask, mask_3) # 1 or 2
+                mask = sitk.Add(mask, mask_4) # 1, 2 or 3
                 fname_clean = filename.replace('.mha', '')
 
                 process_and_save(config, img, mask, f"{config.preprocessing.spider_prefix}_{fname_clean}", config.preprocessing.spider_prefix)
@@ -246,8 +259,5 @@ if __name__ == "__main__":
 
     # Preprocess data
     print(f"Preprocessing data...")
-    processed_count = 0
-    processed_count += preprocess_spider(config)
-    processed_count += preprocess_osf(config)
-    processed_count += preprocess_spine_output(config)
+    processed_count = preprocess_data(config)
     print(f"Processed {processed_count} images")

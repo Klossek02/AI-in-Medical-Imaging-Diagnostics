@@ -48,24 +48,27 @@ def plot_training_results(
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.close()
 
-def visualize_predictions(predictions: List[Tuple[np.ndarray, np.ndarray, np.ndarray]], save_path: str):
+def visualize_predictions(predictions: List[Tuple[np.ndarray, np.ndarray, np.ndarray]], save_path: str) -> List[str]:
     """
     Visualizes predictions and saves them to the specified path.
+    
+    Returns:
+        List of image paths.
     
     Args:
         predictions: List of predictions (image, mask, prediction)
         save_path: Path to save the predictions (directory)
     """
     os.makedirs(save_path, exist_ok=True)
+    image_paths = []
     for i, (image, mask, pred) in enumerate(predictions):
         plt.figure(figsize=(12, 4))
         plt.subplot(1, 3, 1); plt.imshow(image, cmap='gray'); plt.title("Image")
         plt.subplot(1, 3, 2); plt.imshow(mask, cmap='gray'); plt.title("Mask")
         plt.subplot(1, 3, 3); plt.imshow(pred, cmap='gray'); plt.title("Prediction")
-        plt.savefig(os.path.join(save_path, f"prediction_{i+1}.png"))
+        path = os.path.join(save_path, f"prediction_{i+1}.png")
+        plt.savefig(path)
+        image_paths.append(path)
         plt.close()
     
-    # upload to wandb
-    wandb.log({
-        "predictions": [wandb.Image(os.path.join(save_path, f"prediction_{i+1}.png")) for i in range(len(predictions))]
-    })
+    return image_paths

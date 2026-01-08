@@ -1,4 +1,5 @@
 import torch
+import wandb
 import pandas as pd
 from tqdm import tqdm
 import os
@@ -44,8 +45,6 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
         if masks.ndim == 3:
             masks = masks.unsqueeze(1)
 
-        masks[masks > 0] = 1
-        
         # Forward pass
         outputs = model(images)
         loss = loss_fn(outputs, masks)
@@ -99,11 +98,7 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
             if masks.ndim == 3:
                 masks = masks.unsqueeze(1)
 
-            # mask binarization
-            masks[masks > 0] = 1
-            
-            sw_batch_size = (config.dataloader.target_size[0] // config.dataloader.crop_size[0] + 1)**2 # +1 for overlap
-            outputs = sliding_window_inference(inputs=images, predictor=model, roi_size=config.dataloader.crop_size, sw_batch_size=sw_batch_size, overlap=config.dataloader.sw_overlap, mode="gaussian")
+            outputs = sliding_window_inference(inputs=images, predictor=model, roi_size=config.dataloader.crop_size, sw_batch_size=config.dataloader.batch_size, overlap=config.dataloader.sw_overlap, mode="gaussian")
             loss = loss_fn(outputs, masks)
             
             preds = torch.argmax(outputs, dim=1)
@@ -189,6 +184,11 @@ def train(
     # Build model
     device = torch.device(config.training.device)
     model = get_model(config, device=device)
+
+    if use_wandb:
+        wandb.log({
+            'number_of_parameters': sum(p.numel() for p in model.parameters()),
+        })
     
     # Create optimizer and scheduler
     optimizer = get_optimizer(model, config)
@@ -220,7 +220,11 @@ def train(
         )
 
         # Visualize predictions
-        visualize_predictions(visualized_predictions, os.path.join(save_dir, f"epoch_{epoch+1}_predictions"))
+        image_paths = visualize_predictions(visualized_predictions, os.path.join(save_dir, f"epoch_{epoch+1}_predictions"))
+        if use_wandb:
+            wandb.log({
+                "predictions": [wandb.Image(path) for path in image_paths]
+            }, step=epoch+1)
 
         # Update learning rate scheduler
         if config.training.scheduler_type == "ReduceLROnPlateau":
@@ -246,20 +250,16 @@ def train(
         
         # WandB logging
         if use_wandb:
-            try:
-                import wandb
-                wandb.log({
-                    'epoch': epoch + 1,
-                    'train/loss': t_loss,
-                    'train/dice': t_dice,
-                    'train/accuracy': t_acc,
-                    'val/loss': v_loss,
-                    'val/dice': v_dice,
-                    'val/accuracy': v_acc,
-                    'learning_rate': current_lr,
-                })
-            except ImportError:
-                pass  # wandb not installed, skip logging
+            wandb.log({
+                'epoch': epoch + 1,
+                'train/loss': t_loss,
+                'train/dice': t_dice,
+                'train/accuracy': t_acc,
+                'val/loss': v_loss,
+                'val/dice': v_dice,
+                'val/accuracy': v_acc,
+                'learning_rate': current_lr,
+            }, step=epoch+1)
 
         # Append metrics to csv
         metrics_df = pd.DataFrame([{
@@ -298,17 +298,13 @@ def train(
     
     # Log final metrics to wandb
     if use_wandb:
-        try:
-            import wandb
-            wandb.log({
-                'best_val_dice': best_val_dice,
-                'final_train_loss': train_losses[-1] if train_losses else 0,
-                'final_val_loss': val_losses[-1] if val_losses else 0,
-                'final_train_dice': train_dices[-1] if train_dices else 0,
-                'final_val_dice': val_dices[-1] if val_dices else 0,
-            })
-        except ImportError:
-            pass
+        wandb.log({
+            'best_val_dice': best_val_dice,
+            'final_train_loss': train_losses[-1] if train_losses else 0,
+            'final_val_loss': val_losses[-1] if val_losses else 0,
+            'final_train_dice': train_dices[-1] if train_dices else 0,
+            'final_val_dice': val_dices[-1] if val_dices else 0,
+        })
 
     # Test
     test(config, test_loader, loss_fn, device, vis_num=config.training.vis_num, save_dir=save_dir)

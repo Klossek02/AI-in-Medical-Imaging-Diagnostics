@@ -1,4 +1,5 @@
 import torch
+import wandb
 from src.config import Config
 from src.models import build_model
 
@@ -24,5 +25,8 @@ def get_model(config: Config, device: torch.device = None):
         base_c=config.model.base_c,
         bilinear=config.model.bilinear
     )
+
+    # print number of parameters
+    print(f"Number of parameters: {sum(p.numel() for p in model.parameters())}")
     
     return model

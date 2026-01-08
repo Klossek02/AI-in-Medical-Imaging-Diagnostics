@@ -23,4 +23,4 @@ if __name__ == "__main__":
     # 4. Train
     save_dir = os.path.join("models", config.run_identifier)    
     os.makedirs(save_dir)
-    train(config, train_loader, val_loader, test_loader, save_dir=save_dir)
+    train(config, train_loader, val_loader, test_loader, save_dir=save_dir, use_wandb=False)

@@ -2,6 +2,7 @@ import argparse
 import os
 import glob
 import numpy as np
+import matplotlib.pyplot as plt
 from src.config import Config
 from src.preprocessing import preprocess_data
 import torch
@@ -137,8 +138,6 @@ def get_dataloaders(config: Config):
         if len(all_files) == 0:
             raise ValueError(f"There are no .npy files in: {config.preprocessed_data_dir}")
 
-
-    # Splitting into train, val, test
     train_val_files, test_files = train_test_split(all_files, test_size=config.dataloader.test_split, random_state=33)
     train_files, val_files = train_test_split(train_val_files, test_size=config.dataloader.val_split, random_state=33)
 
@@ -149,6 +148,7 @@ def get_dataloaders(config: Config):
     train_files = [load_data(path) for path in train_files]
     val_files = [load_data(path) for path in val_files]
     test_files = [load_data(path) for path in test_files]
+
     
     train_ds = Dataset(data=train_files, transform=get_transforms(config, "train"))
     val_ds   = CacheDataset(data=val_files, transform=get_transforms(config, "val"), cache_rate=1.0, num_workers=config.dataloader.num_workers)

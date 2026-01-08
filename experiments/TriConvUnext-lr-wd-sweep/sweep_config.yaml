@@ -1,13 +1,13 @@
 program: wandb_sweep.py
-method: bayes  # Options: grid, random, bayes
+method: grid
 metric:
-  name: val/dice
+  name: final_val_dice
   goal: maximize
 parameters:
   learning_rate:
-    values: [1e-3, 3e-4, 1e-4]
+    values: [3e-4, 1e-4]
   weight_decay:
-    values: [0, 1e-4, 1e-3] 
+    values: [0, 1e-4] 
   scheduler_params:
     values: [
       {
@@ -17,26 +17,9 @@ parameters:
       {
         "step_size": 1,
         "gamma": 0.9
-      },
-      {
-        "step_size": 1,
-        "gamma": 0.8
       }
     ]
-  loss_fn_params:
-    values: [
-      {
-        "softmax": true,
-        "to_onehot_y": true,
-        "lambda_dice": 1.0,
-        "lambda_focal": 2.0
-      },
-      {
-        "softmax": true,
-        "to_onehot_y": true,
-        "lambda_dice": 2.0,
-        "lambda_focal": 1.0
-      }
-    ]
+  base_c:
+    values: [16, 32]
   config:
     value: "experiments/TriConvUnext-lr-wd-sweep/config.json"

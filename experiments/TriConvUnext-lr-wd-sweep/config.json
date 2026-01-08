@@ -1,36 +1,23 @@
 {
     "training": {
         "saveDir": "models/TriConvSweepv2-lr-wd",
-        "earlyStoppingPatience": 3,
-        "earlyStoppingDelta": 0.001,
+        "earlyStoppingPatience": 4,
+        "earlyStoppingDelta": 0.0001,
         "learningRate": 0.001,
         "weightDecay": 0.001,
-        "numEpochs": 25,
+        "numEpochs": 40,
         "seed": 12,
         "schedulerType": "StepLR",
         "schedulerParams": {
             "step_size": 1,
             "gamma": 0.9999
-        },
-        "lossFnType": "DiceFocalLoss"
-    },
-    "preprocessing": {
-        "targetSpacing": [
-            1.0,
-            1.0,
-            1.0
-        ],
-        "minPixelsMask": 50
+        }
     },
     "dataloader": {
-        "batchSize": 32,
+        "batchSize": 2,
         "numWorkers": 2,
-        "valSplit": 0.2,
-        "testSplit": 0.1,
-        "targetSize": [
-            512,
-            512
-        ],
+        "valSplit": 0.0001,
+        "testSplit": 0.9998,
         "distorsionProb": 0.3,
         "distorsionNumCells": 5,
         "distorsionDistortLimit": 0.03,
@@ -45,8 +32,8 @@
         "rotationProb": 0.5,
         "flipProb": 0.5,
         "cropSize": [
-            512,
-            512
+            256,
+            256
         ],
         "cropPos": 2.0,
         "cropNeg": 1.0,
@@ -60,6 +47,6 @@
     "wandb": {
         "project": "spine-segmentation"
     },
-    "preprocessedDataDir": "data/preprocessed_v2",
+    "preprocessedDataDir": "data/preprocessed_v3",
     "runIdentifier": "TriConvUNext_lr_wd_sweep"
 }

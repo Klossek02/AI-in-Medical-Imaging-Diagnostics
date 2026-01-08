@@ -20,7 +20,7 @@ class TrainingConfig(dataclass_wizard.JSONWizard):
     scheduler_type: Literal["ReduceLROnPlateau", "CosineAnnealingLR", "StepLR"] = "ReduceLROnPlateau"
     scheduler_params: dict = dataclasses.field(default_factory=lambda: {"patience": 3, "factor": 0.5, "min_lr": 1e-6, "mode": "min"})
     loss_fn_type: Literal["DiceFocalLoss", "DiceLoss", "CrossEntropyLoss"] = "DiceFocalLoss"
-    loss_fn_params: dict = dataclasses.field(default_factory=lambda: {"softmax": True, "to_onehot_y": True, "lambda_dice": 1.0, "lambda_focal": 2.0})
+    loss_fn_params: dict = dataclasses.field(default_factory=lambda: {"softmax": True, "to_onehot_y": True, "lambda_dice": 2.0, "lambda_focal": 1.0})
 
 @dataclasses.dataclass
 class PreprocessingConfig(dataclass_wizard.JSONWizard):
@@ -41,8 +41,6 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
     num_workers: int = 2
     val_split: float = 0.2
     test_split: float = 0.1
-    # remember to delete it if sw would work well
-    target_size: tuple[int, int] = (512, 512)
     distorsion_prob: float = 0.3
     distorsion_num_cells: int = 5
     distorsion_distort_limit: float = 0.03
@@ -53,8 +51,8 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
     contrast_gamma: tuple[float, float] = (0.5, 2.0)
     rotation_prob: float = 0.5
     flip_prob: float = 0.5
-    crop_size: tuple[int, int] = (512, 512)
-    crop_pos: float = 1.0
+    crop_size: tuple[int, int] = (256, 256)
+    crop_pos: float = 2.0
     crop_neg: float = 1.0
     crop_num_samples: int = 1
     sw_overlap: float = 0.5
@@ -63,7 +61,7 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
 class ModelConfig(dataclass_wizard.JSONWizard):
     model_type: ModelType = "tri_conv_unext"
     in_channels: int = 1
-    classes: int = 2
+    classes: int = 4
     base_c: int = 32
     bilinear: bool = True
 
