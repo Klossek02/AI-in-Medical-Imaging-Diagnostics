@@ -66,8 +66,12 @@ class deformable_LKA(nn.Module):
 
     def forward(self, x):
         x_hw, x_w, x_h = torch.split(x, self.split_indexes, dim=1)
-        return torch.cat((self.conv0(x_hw), self.dw(x_w), self.dw2(x_h)), dim=1)
 
+        # FORCE eager execution
+        with torch._dynamo.disable():
+            y0 = self.conv0(x_hw)
+
+        return torch.cat((y0, self.dw(x_w), self.dw2(x_h)), dim=1)
 
 class Conv(nn.Module):
     """
