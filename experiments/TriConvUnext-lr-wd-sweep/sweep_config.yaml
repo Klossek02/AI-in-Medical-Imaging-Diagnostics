@@ -19,7 +19,5 @@ parameters:
         "gamma": 0.9
       }
     ]
-  base_c:
-    values: [16, 32]
   config:
     value: "experiments/TriConvUnext-lr-wd-sweep/config.json"
