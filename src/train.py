@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
 
-def train_one_epoch(model, loader, optimizer, loss_fn, device):
+def train_one_epoch(model, loader, optimizer, loss_fn, device, config: Config):
     """
     Trains the model for one epoch.
     
@@ -24,14 +24,16 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
         optimizer: Optimizer
         loss_fn: Loss function
         device: Device to run on
+        config: Config object
     
     Returns:
-        Average loss, dice score, and accuracy for the epoch
+        Average loss, dice score, accuracy, and IoU for the epoch
     """
     model.train()
     epoch_loss = 0.0
     epoch_dice = 0.0
     epoch_acc = 0.0
+    epoch_iou = 0.0
     
     loop = tqdm(loader, desc="Training", leave=False)
     
@@ -56,15 +58,16 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
         
         # Metrics
         preds = torch.argmax(outputs, dim=1)
-        dice, acc = calculate_metrics(preds, masks)
+        dice, acc, iou = calculate_metrics(config, preds, masks)
         
         epoch_loss += loss.item()
         epoch_dice += dice.item()
         epoch_acc += acc.item()
-        
-        loop.set_postfix(loss=loss.item(), dice=dice.item())
+        epoch_iou += iou.item()
+
+        loop.set_postfix(loss=loss.item(), dice=dice.item(), iou=iou.item())
     
-    return epoch_loss / len(loader), epoch_dice / len(loader), epoch_acc / len(loader)
+    return epoch_loss / len(loader), epoch_dice / len(loader), epoch_acc / len(loader), epoch_iou / len(loader)
 
 def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
     """
@@ -78,14 +81,14 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
         vis_num: Number of examples to visualize
     
     Returns:
-        Average loss, dice score, and accuracy for the validation set
+        Average loss, dice score, accuracy, and IoU for the validation set
         Visualized predictions
     """
     model.eval()
     val_loss = 0.0
     val_dice = 0.0
     val_acc = 0.0
-    
+    val_iou = 0.0
     visualized_predictions = []
     
     with torch.no_grad():
@@ -102,18 +105,18 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
             loss = loss_fn(outputs, masks)
             
             preds = torch.argmax(outputs, dim=1)
-            dice, acc = calculate_metrics(preds, masks)
+            dice, acc, iou = calculate_metrics(config, preds, masks)
             
             val_loss += loss.item()
             val_dice += dice.item()
             val_acc += acc.item()
-            
+            val_iou += iou.item()
             # Visualize prediction
             for i in range(images.shape[0]):
                 if len(visualized_predictions) < vis_num:
                     visualized_predictions.append((images[i, 0].cpu().numpy(), masks[i].cpu().numpy().squeeze(), preds[i].cpu().numpy().squeeze()))
     
-    return val_loss / len(loader), val_dice / len(loader), val_acc / len(loader), visualized_predictions
+    return val_loss / len(loader), val_dice / len(loader), val_acc / len(loader), val_iou / len(loader), visualized_predictions
 
 def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, device: torch.device, vis_num: int = 3, save_dir: str = "models", use_wandb: bool = False):
     """
@@ -137,24 +140,32 @@ def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, devi
 
     # Validate
     test_pred_path = os.path.join(save_dir, "test_predictions")
-    test_loss, test_dice, test_acc, visualized_predictions = validate(model, test_loader, loss_fn, device, config, vis_num)
+    test_loss, test_dice, test_acc, test_iou, visualized_predictions = validate(model, test_loader, loss_fn, device, config, vis_num)
     image_paths = visualize_predictions(visualized_predictions, test_pred_path)
     if use_wandb:
         for path in image_paths:
             wandb.log({
                 "final_predictions": wandb.Image(path)
             })
+        wandb.log({
+            'test/loss': test_loss,
+            'test/dice': test_dice,
+            'test/accuracy': test_acc,
+            'test/iou': test_iou,
+        })
     # Save test metrics to csv
     test_metrics_df = pd.DataFrame([{
         'run_identifier': config.run_identifier,
         'test/loss': test_loss,
         'test/dice': test_dice,
         'test/accuracy': test_acc,
+        'test/iou': test_iou,
     }])
     test_metrics_df.to_csv(os.path.join(save_dir, "test_metrics.csv"), index=False)
     print(f"🏁 Test finished!")
     print(f"🎯 Dice: {test_dice:.4f}")
     print(f"✅ Acc: {test_acc:.4f}")
+    print(f"💡 IoU: {test_iou:.4f}")
     print(f"💾 Saved test predictions to {test_pred_path}")
 
 def train(
@@ -208,19 +219,19 @@ def train(
     train_losses, val_losses = [], []
     train_dices, val_dices = [], []
     train_accs, val_accs = [], []
-    
+    train_ious, val_ious = [], []
     print(f"\n🚀 Starting training for {config.training.num_epochs} epochs...")
     
     for epoch in range(config.training.num_epochs):
         print(f"\n--- Epoch {epoch+1}/{config.training.num_epochs} ---")
         
         # Train
-        t_loss, t_dice, t_acc = train_one_epoch(
-            model, train_loader, optimizer, loss_fn, device
+        t_loss, t_dice, t_acc, t_iou = train_one_epoch(
+            model, train_loader, optimizer, loss_fn, device, config
         )
         
         # Validate
-        v_loss, v_dice, v_acc, visualized_predictions = validate(
+        v_loss, v_dice, v_acc, v_iou, visualized_predictions = validate(
             model, val_loader, loss_fn, device, config, vis_num=config.training.vis_num
         )
 
@@ -247,11 +258,13 @@ def train(
         val_dices.append(v_dice)
         train_accs.append(t_acc)
         val_accs.append(v_acc)
-        
+        train_ious.append(t_iou)
+        val_ious.append(v_iou)
         # Logging
         print(f"📉 Loss -> Train: {t_loss:.4f} | Val: {v_loss:.4f}")
         print(f"🎯 Dice -> Train: {t_dice:.4f} | Val: {v_dice:.4f}")
         print(f"✅ Acc  -> Train: {t_acc:.4f} | Val: {v_acc:.4f}")
+        print(f"💡 IoU -> Train: {t_iou:.4f} | Val: {v_iou:.4f}")
         print(f"⚡ LR: {current_lr:.2e}")
         
         # WandB logging
@@ -261,9 +274,11 @@ def train(
                 'train/loss': t_loss,
                 'train/dice': t_dice,
                 'train/accuracy': t_acc,
+                'train/iou': t_iou,
                 'val/loss': v_loss,
                 'val/dice': v_dice,
                 'val/accuracy': v_acc,
+                'val/iou': v_iou,
                 'learning_rate': current_lr,
             }, step=epoch+1)
 
@@ -273,9 +288,11 @@ def train(
             'train/loss': t_loss,
             'train/dice': t_dice,
             'train/accuracy': t_acc,
+            'train/iou': t_iou,
             'val/loss': v_loss,
             'val/dice': v_dice,
             'val/accuracy': v_acc,
+            'val/iou': v_iou,
             'learning_rate': current_lr,
         }])
         metrics_df.to_csv(os.path.join(save_dir, "metrics.csv"), mode='a', header=not os.path.exists(os.path.join(save_dir, "metrics.csv")), index=False)
@@ -302,16 +319,6 @@ def train(
     print(f"\n✅ Training finished!")
     print(f"Best Dice: {best_val_dice:.4f}")
     
-    # Log final metrics to wandb
-    if use_wandb:
-        wandb.log({
-            'best_val_dice': best_val_dice,
-            'final_train_loss': train_losses[-1] if train_losses else 0,
-            'final_val_loss': val_losses[-1] if val_losses else 0,
-            'final_train_dice': train_dices[-1] if train_dices else 0,
-            'final_val_dice': val_dices[-1] if val_dices else 0,
-        })
-
     # Test
     test(config, test_loader, loss_fn, device, vis_num=config.training.vis_num, save_dir=save_dir, use_wandb=use_wandb)
 

@@ -1,7 +1,7 @@
 program: wandb_sweep.py
 method: grid
 metric:
-  name: final_val_dice
+  name: val/dice
   goal: maximize
 parameters:
   learning_rate:

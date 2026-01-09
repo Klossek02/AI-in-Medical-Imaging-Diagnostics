@@ -1,5 +1,6 @@
 import argparse
 import os
+from datetime import datetime
 from src.config import Config
 from src.preprocessing import preprocess_data
 from src.dataloader import get_dataloaders
@@ -21,6 +22,6 @@ if __name__ == "__main__":
     train_loader, val_loader, test_loader = get_dataloaders(config)
     
     # 4. Train
-    save_dir = os.path.join("models", config.run_identifier)    
+    save_dir = os.path.join("models", f"{config.run_identifier}-{datetime.now().strftime('%Y%m%d_%H%M%S')}")    
     os.makedirs(save_dir)
     train(config, train_loader, val_loader, test_loader, save_dir=save_dir, use_wandb=False)

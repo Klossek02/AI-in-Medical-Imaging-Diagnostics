@@ -1,7 +1,7 @@
 {
     "training": {
         "saveDir": "models",
-        "visNum": 3,
+        "visNum": 5,
         "earlyStoppingPatience": 3,
         "earlyStoppingDelta": 0.001,
         "learningRate": 0.0001,
@@ -70,6 +70,7 @@
     "model": {
         "modelType": "tri_conv_unext",
         "inChannels": 1,
+        "compile": true,
         "classes": 4,
         "baseC": 32,
         "bilinear": true

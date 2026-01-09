@@ -11,6 +11,7 @@ Usage:
 
 import argparse
 import ast
+from datetime import datetime
 import os
 import wandb
 from src.config import Config
@@ -157,7 +158,7 @@ def main():
     train_loader, val_loader, test_loader = get_dataloaders(config)
     
     # Train (wandb logging will be handled inside train function)
-    save_dir = os.path.join(config.training.save_dir, wandb.run.name)
+    save_dir = os.path.join(f"{config.training.save_dir}-{datetime.now().strftime('%Y%m%d_%H%M%S')}", wandb.run.name)
     os.makedirs(save_dir)
     train(config, train_loader, val_loader, test_loader, save_dir=save_dir, use_wandb=True)
     

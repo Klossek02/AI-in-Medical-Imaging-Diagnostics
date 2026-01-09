@@ -10,7 +10,7 @@ ModelType = Literal[tuple(models.keys())]
 @dataclasses.dataclass
 class TrainingConfig(dataclass_wizard.JSONWizard):
     save_dir: str = "models"
-    vis_num: int = 3 # number of examples to visualize every validation epoch
+    vis_num: int = 5 # number of examples to visualize every validation epoch
     early_stopping_patience: int = 3
     early_stopping_delta: float = 0.001
     learning_rate: float = 1e-4
@@ -62,6 +62,7 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
 class ModelConfig(dataclass_wizard.JSONWizard):
     model_type: ModelType = "tri_conv_unext"
     in_channels: int = 1
+    compile: bool = True
     classes: int = 4
     base_c: int = 32
     bilinear: bool = True
