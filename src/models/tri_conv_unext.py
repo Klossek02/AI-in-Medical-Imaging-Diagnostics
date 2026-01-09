@@ -43,7 +43,6 @@ class DeformConv(nn.Module):
                                                         dilation=dilation,
                                                         bias=False)
 
-    @torch._dynamo.disable
     def forward(self, x):
         offsets = self.offset_net(x)
         out = self.deform_conv(x, offsets)
@@ -64,12 +63,10 @@ class deformable_LKA(nn.Module):
         self.dw = nn.Conv2d(gc2, gc2, kernel_size=7, padding=3, stride=1, groups=gc2)
         self.split_indexes = (gc1, gc2, gc3)
 
+    @torch._dynamo.disable
     def forward(self, x):
         x_hw, x_w, x_h = torch.split(x, self.split_indexes, dim=1)
-
-        # FORCE eager execution
-        with torch._dynamo.disable():
-            y0 = self.conv0(x_hw)
+        y0 = self.conv0(x_hw)
 
         return torch.cat((y0, self.dw(x_w), self.dw2(x_h)), dim=1)
 
