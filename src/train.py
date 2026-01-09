@@ -115,7 +115,7 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
     
     return val_loss / len(loader), val_dice / len(loader), val_acc / len(loader), visualized_predictions
 
-def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, device: torch.device, vis_num: int = 3, save_dir: str = "models"):
+def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, device: torch.device, vis_num: int = 3, save_dir: str = "models", use_wandb: bool = False):
     """
     Tests the model on test data.
     
@@ -138,7 +138,12 @@ def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, devi
     # Validate
     test_pred_path = os.path.join(save_dir, "test_predictions")
     test_loss, test_dice, test_acc, visualized_predictions = validate(model, test_loader, loss_fn, device, config, vis_num)
-    visualize_predictions(visualized_predictions, test_pred_path)
+    image_paths = visualize_predictions(visualized_predictions, test_pred_path)
+    if use_wandb:
+        for path in image_paths:
+            wandb.log({
+                "final_predictions": wandb.Image(path)
+            })
     # Save test metrics to csv
     test_metrics_df = pd.DataFrame([{
         'run_identifier': config.run_identifier,
@@ -222,9 +227,10 @@ def train(
         # Visualize predictions
         image_paths = visualize_predictions(visualized_predictions, os.path.join(save_dir, f"epoch_{epoch+1}_predictions"))
         if use_wandb:
-            wandb.log({
-                "predictions": [wandb.Image(path) for path in image_paths]
-            }, step=epoch+1)
+            for path in image_paths:
+                wandb.log({
+                    "predictions": wandb.Image(path)
+                }, step=epoch+1)
 
         # Update learning rate scheduler
         if config.training.scheduler_type == "ReduceLROnPlateau":
@@ -307,7 +313,7 @@ def train(
         })
 
     # Test
-    test(config, test_loader, loss_fn, device, vis_num=config.training.vis_num, save_dir=save_dir)
+    test(config, test_loader, loss_fn, device, vis_num=config.training.vis_num, save_dir=save_dir, use_wandb=use_wandb)
 
     print(f"\n✅ All done!")
     
