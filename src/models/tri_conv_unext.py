@@ -43,6 +43,7 @@ class DeformConv(nn.Module):
                                                         dilation=dilation,
                                                         bias=False)
 
+    @torch._dynamo.disable
     def forward(self, x):
         offsets = self.offset_net(x)
         out = self.deform_conv(x, offsets)
