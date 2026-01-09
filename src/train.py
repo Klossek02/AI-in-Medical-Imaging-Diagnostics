@@ -143,10 +143,9 @@ def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, devi
     test_loss, test_dice, test_acc, test_iou, visualized_predictions = validate(model, test_loader, loss_fn, device, config, vis_num)
     image_paths = visualize_predictions(visualized_predictions, test_pred_path)
     if use_wandb:
-        for path in image_paths:
-            wandb.log({
-                "final_predictions": wandb.Image(path)
-            })
+        wandb.log({
+            "final_predictions": [wandb.Image(path) for path in image_paths]
+        })
         wandb.log({
             'test/loss': test_loss,
             'test/dice': test_dice,
@@ -238,10 +237,9 @@ def train(
         # Visualize predictions
         image_paths = visualize_predictions(visualized_predictions, os.path.join(save_dir, f"epoch_{epoch+1}_predictions"))
         if use_wandb:
-            for path in image_paths:
-                wandb.log({
-                    "predictions": wandb.Image(path)
-                }, step=epoch+1)
+            wandb.log({
+                "predictions": [wandb.Image(path) for path in image_paths]
+            }, step=epoch+1)
 
         # Update learning rate scheduler
         if config.training.scheduler_type == "ReduceLROnPlateau":
