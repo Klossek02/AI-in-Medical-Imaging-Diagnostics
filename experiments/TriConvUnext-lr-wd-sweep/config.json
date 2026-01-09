@@ -14,7 +14,7 @@
         }
     },
     "dataloader": {
-        "batchSize": 2,
+        "batchSize": 32,
         "numWorkers": 2,
         "valSplit": 0.2,
         "testSplit": 0.1,
