@@ -53,14 +53,30 @@ class deformable_LKA(nn.Module):
     """
     Deformable Large Kernel Attention module.
     """
-    def __init__(self, dim):
+    def __init__(self, dim, use_deformable=True, use_dilated=True, use_depthwise=True):
         super().__init__()
         gc1 = int(dim * 0.25)
         gc2 = int(dim * 0.5)
         gc3 = int(dim * 0.25)
-        self.conv0 = DeformConv(gc1, groups=gc1, kernel_size=(3,3), padding=1)
-        self.dw2 = nn.Conv2d(gc3, gc3, kernel_size=3, padding='same', dilation=2)
-        self.dw = nn.Conv2d(gc2, gc2, kernel_size=7, padding=3, stride=1, groups=gc2)
+        
+        # Deformable convolution (can be replaced with standard conv)
+        if use_deformable:
+            self.conv0 = DeformConv(gc1, groups=gc1, kernel_size=(3,3), padding=1)
+        else:
+            self.conv0 = nn.Conv2d(gc1, gc1, kernel_size=3, padding=1)
+        
+        # Dilated convolution (can be replaced with standard conv)
+        if use_dilated:
+            self.dw2 = nn.Conv2d(gc3, gc3, kernel_size=3, padding='same', dilation=2)
+        else:
+            self.dw2 = nn.Conv2d(gc3, gc3, kernel_size=3, padding=1)
+        
+        # Depthwise convolution (can be replaced with standard conv)
+        if use_depthwise:
+            self.dw = nn.Conv2d(gc2, gc2, kernel_size=7, padding=3, stride=1, groups=gc2)
+        else:
+            self.dw = nn.Conv2d(gc2, gc2, kernel_size=7, padding=3, stride=1)
+        
         self.split_indexes = (gc1, gc2, gc3)
 
     @torch._dynamo.disable
@@ -74,9 +90,9 @@ class Conv(nn.Module):
     """
     Convolution block with deformable LKA attention.
     """
-    def __init__(self, dim):
+    def __init__(self, dim, use_deformable=True, use_dilated=True, use_depthwise=True):
         super(Conv, self).__init__()
-        self.dwconv = deformable_LKA(dim)
+        self.dwconv = deformable_LKA(dim, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
         self.norm1 = nn.BatchNorm2d(dim)
         self.pwconv1 = nn.Linear(dim, 4 * dim)
         self.act1 = nn.GELU()
@@ -103,10 +119,10 @@ class Down(nn.Sequential):
     """
     Downsampling block.
     """
-    def __init__(self, in_channels, out_channels, layer_num=1):
+    def __init__(self, in_channels, out_channels, layer_num=1, use_deformable=True, use_dilated=True, use_depthwise=True):
         layers = nn.ModuleList()
         for i in range(layer_num):
-            layers.append(Conv(out_channels))
+            layers.append(Conv(out_channels, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise))
         super(Down, self).__init__(
             nn.BatchNorm2d(in_channels),
             nn.Conv2d(in_channels, out_channels, kernel_size=2, stride=2),
@@ -118,7 +134,7 @@ class Up(nn.Module):
     """
     Upsampling block with skip connections.
     """
-    def __init__(self, in_channels, out_channels, bilinear=True, layer_num=1):
+    def __init__(self, in_channels, out_channels, bilinear=True, layer_num=1, use_deformable=True, use_dilated=True, use_depthwise=True):
         super(Up, self).__init__()
         C = in_channels // 2
         self.norm = nn.BatchNorm2d(C)
@@ -129,7 +145,7 @@ class Up(nn.Module):
         self.conv1x1 = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         layers = nn.ModuleList()
         for i in range(layer_num):
-            layers.append(Conv(out_channels))
+            layers.append(Conv(out_channels, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise))
         self.conv = nn.Sequential(*layers)
 
     def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
@@ -166,7 +182,10 @@ class TriConvUNext(nn.Module):
                  in_channels: int = 1,
                  num_classes: int = 2,
                  bilinear: bool = True,
-                 base_c: int = 32):
+                 base_c: int = 32,
+                 use_deformable: bool = True,
+                 use_dilated: bool = True,
+                 use_depthwise: bool = True):
         super(TriConvUNext, self).__init__()
         self.in_channels = in_channels
         self.num_classes = num_classes
@@ -176,17 +195,17 @@ class TriConvUNext(nn.Module):
             nn.Conv2d(in_channels, base_c, kernel_size=7, padding=3, padding_mode='reflect'),
             nn.BatchNorm2d(base_c),
             nn.GELU(),
-            Conv(base_c)
+            Conv(base_c, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
         )
-        self.down1 = Down(base_c, base_c * 2)
-        self.down2 = Down(base_c * 2, base_c * 4)
-        self.down3 = Down(base_c * 4, base_c * 8, layer_num=3)
+        self.down1 = Down(base_c, base_c * 2, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
+        self.down2 = Down(base_c * 2, base_c * 4, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
+        self.down3 = Down(base_c * 4, base_c * 8, layer_num=3, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
         factor = 2 if bilinear else 1
-        self.down4 = Down(base_c * 8, base_c * 16 // factor)
-        self.up1 = Up(base_c * 16, base_c * 8 // factor, bilinear)
-        self.up2 = Up(base_c * 8, base_c * 4 // factor, bilinear)
-        self.up3 = Up(base_c * 4, base_c * 2 // factor, bilinear)
-        self.up4 = Up(base_c * 2, base_c, bilinear)
+        self.down4 = Down(base_c * 8, base_c * 16 // factor, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
+        self.up1 = Up(base_c * 16, base_c * 8 // factor, bilinear, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
+        self.up2 = Up(base_c * 8, base_c * 4 // factor, bilinear, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
+        self.up3 = Up(base_c * 4, base_c * 2 // factor, bilinear, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
+        self.up4 = Up(base_c * 2, base_c, bilinear, use_deformable=use_deformable, use_dilated=use_dilated, use_depthwise=use_depthwise)
         self.out_conv = OutConv(base_c, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -203,7 +222,7 @@ class TriConvUNext(nn.Module):
         return logits
 
 
-def build_tri_conv_unext(device, in_channels=1, classes=2, base_c=32, bilinear=True):
+def build_tri_conv_unext(device, in_channels=1, classes=2, base_c=32, bilinear=True, use_deformable=True, use_dilated=True, use_depthwise=True):
     """
     The function builds and returns a TriConvUNext segmentation model.
     
@@ -213,18 +232,25 @@ def build_tri_conv_unext(device, in_channels=1, classes=2, base_c=32, bilinear=T
         classes: Number of output classes (default: 2)
         base_c: Base number of channels (default: 32)
         bilinear: Whether to use bilinear upsampling (default: True)
+        use_deformable: Whether to use deformable convolutions (default: True)
+        use_dilated: Whether to use dilated convolutions (default: True)
+        use_depthwise: Whether to use depthwise convolutions (default: True)
     
     Returns:
         TriConvUNext model instance
     """
     
-    print(f"Building model: TriConvUNext with in_channels={in_channels}, classes={classes}, base_c={base_c}")
+    print(f"Building model: TriConvUNext with in_channels={in_channels}, classes={classes}, base_c={base_c}, "
+          f"use_deformable={use_deformable}, use_dilated={use_dilated}, use_depthwise={use_depthwise}")
     
     model = TriConvUNext(
         in_channels=in_channels,
         num_classes=classes,
         bilinear=bilinear,
-        base_c=base_c
+        base_c=base_c,
+        use_deformable=use_deformable,
+        use_dilated=use_dilated,
+        use_depthwise=use_depthwise
     )
 
     return model.to(device)

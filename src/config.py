@@ -59,6 +59,12 @@ class DataLoaderConfig(dataclass_wizard.JSONWizard):
     sw_overlap: float = 0.5
 
 @dataclasses.dataclass
+class TriConvUNextConfig(dataclass_wizard.JSONWizard):
+    use_deformable: bool = True
+    use_dilated: bool = True
+    use_depthwise: bool = True
+
+@dataclasses.dataclass
 class ModelConfig(dataclass_wizard.JSONWizard):
     model_type: ModelType = "tri_conv_unext"
     in_channels: int = 1
@@ -66,6 +72,7 @@ class ModelConfig(dataclass_wizard.JSONWizard):
     classes: int = 4
     base_c: int = 32
     bilinear: bool = True
+    tri_conv_unext: TriConvUNextConfig = dataclasses.field(default_factory=TriConvUNextConfig)
 
 @dataclasses.dataclass
 class WandBConfig(dataclass_wizard.JSONWizard):

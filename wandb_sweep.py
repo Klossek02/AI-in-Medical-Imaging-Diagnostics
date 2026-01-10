@@ -45,6 +45,9 @@ SWEEPABLE_CONFIG_MAP: dict[str, str] = {
     'crop_size': 'dataloader.crop_size',
     'crop_pos': 'dataloader.crop_pos',
     'crop_neg': 'dataloader.crop_neg',
+    'use_deformable': 'model.tri_conv_unext.use_deformable',
+    'use_dilated': 'model.tri_conv_unext.use_dilated',
+    'use_depthwise': 'model.tri_conv_unext.use_depthwise',
 }
 
 def getattr_nested(obj, path, default=None):
@@ -72,6 +75,8 @@ def setattr_nested(obj, path, value):
     if is_dict:
         obj[last] = value
     else:
+        if isinstance(getattr(obj, last), bool):
+            value = value.lower() == "true"
         setattr(obj, last, value)
 
 def parse_complex_type(value_str, expected_type):
@@ -126,16 +131,22 @@ def main():
         if expected_type in (dict, tuple, list):
             # Use default argument to capture expected_type in closure
             parser.add_argument(f"--{key}", type=lambda x, et=expected_type: parse_complex_type(x, et), default=None, help=f"{key} value")
+        elif expected_type == bool:
+            parser.add_argument(f"--{key}", type=str, default="true", help=f"{key} value")
         else:
             parser.add_argument(f"--{key}", type=expected_type, default=None, help=f"{key} value")
     parser.add_argument("--config", type=str, default=None, help="Config file path")
     args = parser.parse_args()
 
+    
     if args.config:
         with open(args.config, "r") as f:
             config = Config.from_json(f.read())
+    print(f"🔧 Default Config: {config.__dict__}")
+    print(f"🔧 Args: {args.__dict__}")
 
     update_config_from_wandb(config, args.__dict__)
+    print(f"🔧 Updated Config: {config.__dict__}")
 
     wandb_config = {}
     for key, value in SWEEPABLE_CONFIG_MAP.items():

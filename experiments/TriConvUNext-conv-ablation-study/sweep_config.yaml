@@ -1,0 +1,14 @@
+program: wandb_sweep.py
+method: grid
+metric:
+  name: val/dice
+  goal: maximize
+parameters:
+  use_deformable:
+    values: [true, false]
+  use_dilated:
+    values: [true, false]
+  use_depthwise:
+    values: [true, false]
+  config:
+    value: "experiments/TriConvUNext-conv-ablation-study/config.json"
