@@ -5,7 +5,7 @@
         "earlyStoppingDelta": 0.001,
         "learningRate": 0.0003,
         "weightDecay": 0.0001,
-        "numEpochs": 1,
+        "numEpochs": 40,
         "seed": 12,
         "schedulerType": "StepLR",
         "schedulerParams": {
