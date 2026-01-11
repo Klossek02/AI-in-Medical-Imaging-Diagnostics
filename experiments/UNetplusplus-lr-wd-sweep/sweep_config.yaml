@@ -5,19 +5,8 @@ metric:
   goal: maximize
 parameters:
   learning_rate:
-    values: [3e-4, 1e-4]
+    values: [3e-4, 1e-4, 3e-5]
   weight_decay:
     values: [0, 1e-4] 
-  scheduler_params:
-    values: [
-      {
-        "step_size": 1,
-        "gamma": 0.9999
-      },
-      {
-        "step_size": 1,
-        "gamma": 0.9
-      }
-    ]
   config:
     value: "experiments/UNetplusplus-lr-wd-sweep/config.json"
