@@ -16,8 +16,8 @@
     "dataloader": {
         "batchSize": 32,
         "numWorkers": 2,
-        "valSplit": 0.0001,
-        "testSplit": 0.99985,
+        "valSplit": 0.2,
+        "testSplit": 0.1,
         "distorsionProb": 0.3,
         "distorsionNumCells": 5,
         "distorsionDistortLimit": 0.03,
