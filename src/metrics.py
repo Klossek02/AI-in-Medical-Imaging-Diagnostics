@@ -1,35 +1,51 @@
 import torch
+from monai.metrics import DiceMetric, MeanIoU
+from sklearn.metrics import accuracy_score
+from src.config import Config
 
-def calculate_metrics(preds: torch.Tensor, targets: torch.Tensor):
+def calculate_metrics(config: Config, preds: torch.Tensor, targets: torch.Tensor):
     """
-    Calculates Dice Score and Accuracy for binary segmentation.
+    Calculates Dice Score and Accuracy for multi-class segmentation.
     
     Args:
-        preds: Predicted masks [B, H, W] or [B, 1, H, W] with class indices (0 or 1)
-        targets: Ground truth masks [B, H, W] or [B, 1, H, W] with class indices (0 or 1)
+        config: Config object
+        preds: Predicted masks [B, H, W] or [B, 1, H, W] with class indices (0, 1, 2, ...)
+        targets: Ground truth masks [B, H, W] or [B, 1, H, W] with class indices (0, 1, 2, ...)
     
     Returns:
-        dice: Dice score (scalar tensor)
+        dice: Dice score (scalar tensor) - mean across all classes
         acc: Accuracy (scalar tensor)
+        iou: IoU score (scalar tensor) - mean across all classes
     """
-    smooth = 1e-6
-    
     # Remove channel dimension if present
     if targets.ndim == 4:
         targets = targets.squeeze(1)
     if preds.ndim == 4:
         preds = preds.squeeze(1)
     
-    # Flatten tensors
-    preds_flat = preds.view(-1).float()
-    targets_flat = targets.view(-1).float()
+    # Convert class indices to one-hot encoding for MONAI metrics
+    # MONAI expects one-hot format: [B, C, H, W] where C is num_classes
+    num_classes = config.model.classes
     
-    # Dice Score
-    intersection = (preds_flat * targets_flat).sum()
-    dice = (2. * intersection + smooth) / (preds_flat.sum() + targets_flat.sum() + smooth)
+    # Convert predictions to one-hot: [B, H, W] -> [B, C, H, W]
+    preds_onehot = torch.nn.functional.one_hot(preds.long(), num_classes=num_classes).permute(0, 3, 1, 2).float()
     
-    # Accuracy
-    correct = (preds_flat == targets_flat).sum()
-    acc = correct / len(targets_flat)
+    # Convert targets to one-hot: [B, H, W] -> [B, C, H, W]
+    targets_onehot = torch.nn.functional.one_hot(targets.long(), num_classes=num_classes).permute(0, 3, 1, 2).float()
     
-    return dice, acc
+    # Initialize metrics with "mean" reduction to get single mean across all classes
+    dice_metric = DiceMetric(reduction="mean", num_classes=num_classes)
+    mean_iou = MeanIoU(reduction="mean")
+    
+    # Update metrics with batch data
+    dice_metric(preds_onehot, targets_onehot)
+    mean_iou(preds_onehot, targets_onehot)
+    
+    # Aggregate and get single mean values
+    dice = dice_metric.aggregate()
+    iou = mean_iou.aggregate()
+    
+    # Calculate accuracy (doesn't need one-hot encoding)
+    acc = accuracy_score(targets.cpu().view(-1).numpy(), preds.cpu().view(-1).numpy())
+    
+    return dice, torch.tensor(acc, device=preds.device), iou

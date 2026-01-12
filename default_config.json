@@ -1,7 +1,7 @@
 {
     "training": {
         "saveDir": "models",
-        "visNum": 3,
+        "visNum": 5,
         "earlyStoppingPatience": 3,
         "earlyStoppingDelta": 0.001,
         "learningRate": 0.0001,
@@ -20,14 +20,14 @@
         "lossFnParams": {
             "softmax": true,
             "to_onehot_y": true,
-            "lambda_dice": 1.0,
-            "lambda_focal": 2.0
+            "lambda_dice": 2.0,
+            "lambda_focal": 1.0
         }
     },
     "preprocessing": {
         "spiderPath": "data/SPIDER",
         "spiderPrefix": "SPIDER",
-        "spiderImagesPath": "data/SPIDER/images/images",
+        "spiderImagesPath": "data/SPIDER/images",
         "spiderMasksPath": "data/SPIDER/masks",
         "osfPath": "data/osf-files",
         "osfPrefix": "OSF",
@@ -45,10 +45,6 @@
         "numWorkers": 2,
         "valSplit": 0.2,
         "testSplit": 0.1,
-        "targetSize": [
-            256,
-            256
-        ],
         "distorsionProb": 0.3,
         "distorsionNumCells": 5,
         "distorsionDistortLimit": 0.03,
@@ -61,15 +57,28 @@
             2.0
         ],
         "rotationProb": 0.5,
-        "flipProb": 0.5
+        "flipProb": 0.5,
+        "cropSize": [
+            256,
+            256
+        ],
+        "cropPos": 2.0,
+        "cropNeg": 1.0,
+        "cropNumSamples": 1,
+        "swOverlap": 0.5
     },
     "model": {
         "modelType": "tri_conv_unext",
         "inChannels": 1,
-        "classes": 2,
+        "compile": true,
+        "classes": 4,
         "baseC": 32,
         "bilinear": true
     },
-    "preprocessedDataDir": "data/preprocessed_v2",
+    "wandb": {
+        "project": "spine-segmentation"
+    },
+    "preprocessedDataDir": "data/preprocessed_v3",
+    "cacheDir": "data/cache",
     "runIdentifier": "default"
 }
