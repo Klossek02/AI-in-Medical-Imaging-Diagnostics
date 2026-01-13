@@ -68,12 +68,17 @@
         "swOverlap": 0.5
     },
     "model": {
-        "modelType": "segformer",
+        "modelType": "tri_conv_unext",
         "inChannels": 1,
-        "compile": false,
+        "compile": true,
         "classes": 4,
         "baseC": 32,
-        "bilinear": true
+        "bilinear": true,
+        "triConvUnext": {
+            "useDeformable": true,
+            "useDilated": true,
+            "useDepthwise": true
+        }
     },
     "wandb": {
         "project": "spine-segmentation"

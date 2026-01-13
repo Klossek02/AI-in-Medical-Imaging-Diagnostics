@@ -3,8 +3,8 @@ from .unet_plusplus import build_unet_plusplus
 from .vision_transformer import build_segformer
 
 models = {
-    # 'tri_conv_unext': build_tri_conv_unext,
-    # 'unet_plusplus_resnet34': lambda device, in_channels, classes, base_c, bilinear, **kwargs: build_unet_plusplus(device, encoder='resnet34', in_channels=in_channels, classes=classes),
+    'tri_conv_unext': build_tri_conv_unext,
+    'unet_plusplus_resnet34': lambda device, in_channels, classes, base_c, bilinear, **kwargs: build_unet_plusplus(device, encoder='resnet34', in_channels=in_channels, classes=classes),
     'segformer': lambda device, in_channels, classes, base_c, bilinear, **kwargs: build_segformer(device, in_channels=in_channels, classes=classes)
 }
 
