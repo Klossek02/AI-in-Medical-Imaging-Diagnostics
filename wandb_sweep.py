@@ -136,6 +136,7 @@ def main():
         else:
             parser.add_argument(f"--{key}", type=expected_type, default=None, help=f"{key} value")
     parser.add_argument("--config", type=str, default=None, help="Config file path")
+    parser.add_argument("--name", type=str, default=None, help="WandB run name")
     args = parser.parse_args()
 
     
@@ -154,7 +155,8 @@ def main():
     
     wandb.init(
         project=config.wandb.project,
-        config=wandb_config
+        config=wandb_config,
+        name=args.name
     )
     
     print(f"🔧 WandB Run: {wandb.run.name}")

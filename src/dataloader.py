@@ -146,16 +146,27 @@ def get_dataloaders(config: Config):
 
         if len(all_files) == 0:
             raise ValueError(f"There are no .npy files in: {config.preprocessed_data_dir}")
+    
+    # split files by patient
+    patient_files = {}
+    for file in all_files:
+        patient_id = os.path.basename(file).split("_slice")[0]
+        if patient_id not in patient_files:
+            patient_files[patient_id] = []
+        patient_files[patient_id].append(file)
+    
+    patient_ids = list(patient_files.keys())
 
-    train_val_files, test_files = train_test_split(all_files, test_size=config.dataloader.test_split, random_state=33)
-    train_files, val_files = train_test_split(train_val_files, test_size=config.dataloader.val_split, random_state=33)
+    train_val_patient_ids, test_patient_ids = train_test_split(patient_ids, test_size=config.dataloader.test_split, random_state=33)
+    train_patient_ids, val_patient_ids = train_test_split(train_val_patient_ids, test_size=config.dataloader.val_split, random_state=33)
 
-    print(f"Split: training = {len(train_files)}, validation = {len(val_files)}, test = {len(test_files)}")
+    print(f"Split (num of patients): training = {len(train_patient_ids)}, validation = {len(val_patient_ids)}, test = {len(test_patient_ids)}")
 
-    train_files = [load_data(path) for path in train_files]
-    val_files = [load_data(path) for path in val_files]
-    test_files = [load_data(path) for path in test_files]
+    train_files = [load_data(file) for pid in train_patient_ids for file in patient_files[pid]]
+    val_files = [load_data(file) for pid in val_patient_ids for file in patient_files[pid]]
+    test_files = [load_data(file) for pid in test_patient_ids for file in patient_files[pid]]
 
+    print(f"Split (num of files): training = {len(train_files)}, validation = {len(val_files)}, test = {len(test_files)}")
     
     train_ds = Dataset(data=train_files, transform=get_transforms(config, "train"))
     val_ds   = CacheDataset(data=val_files, transform=get_transforms(config, "val"), cache_rate=1.0, num_workers=config.dataloader.num_workers)

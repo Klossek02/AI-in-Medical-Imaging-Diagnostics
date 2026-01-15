@@ -1,0 +1,53 @@
+{
+    "training": {
+        "saveDir": "models/TriConvUNext_light_parameters",
+        "earlyStoppingPatience": 4,
+        "earlyStoppingDelta": 0.0001,
+        "learningRate": 3e-4,
+        "weightDecay": 1e-4,
+        "numEpochs": 40,
+        "seed": 12,
+        "schedulerType": "StepLR",
+        "schedulerParams": {
+            "step_size": 1,
+            "gamma": 0.9
+        }
+    },
+    "dataloader": {
+        "batchSize": 32,
+        "numWorkers": 2,
+        "valSplit": 0.2,
+        "testSplit": 0.1,
+        "distorsionProb": 0.3,
+        "distorsionNumCells": 5,
+        "distorsionDistortLimit": 0.03,
+        "noiseProb": 0.1,
+        "noiseMean": 0.0,
+        "noiseStd": 0.1,
+        "contrastProb": 0.2,
+        "contrastGamma": [
+            0.5,
+            2.0
+        ],
+        "rotationProb": 0.5,
+        "flipProb": 0.5,
+        "cropSize": [
+            256,
+            256
+        ],
+        "cropPos": 2.0,
+        "cropNeg": 1.0,
+        "cropNumSamples": 1
+    },
+    "model": {
+        "modelType": "tri_conv_unext",
+        "baseC": 16,
+        "bilinear": true,
+        "compile": false
+    },
+    "wandb": {
+        "project": "spine-segmentation"
+    },
+    "preprocessedDataDir": "data/preprocessed_v3",
+    "runIdentifier": "TriConvUNext_light_parameters"
+}
