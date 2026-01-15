@@ -40,7 +40,7 @@
         "cropNumSamples": 1
     },
     "model": {
-        "modelType": "segformer",
+        "modelType": "segformer_resnet34",
         "baseC": 32,
         "bilinear": true,
         "compile": false
