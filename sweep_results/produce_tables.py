@@ -5,14 +5,16 @@ SWEEP_IDS = {
     "TriConvUNext-hyperparameter-sweep": "mnispkk9",
     "TriConvUNext-convolution-type-sweep": "31spdvkd",
     "UNetplusplus-hyperparameter-sweep": "l88c2zec",
-    "TriConvUNext-smaller-hyperparameter-sweep": "pukeohhv"
+    "TriConvUNext-smaller-hyperparameter-sweep": "pukeohhv",
+    "Segformer-hyperparameter-sweep": "0yu0hy8p"
 }
 
 SWEEPS = {
     "TriConvUNext-hyperparameter-sweep": ["config.learning_rate", "config.weight_decay", "config.scheduler_params.gamma"],
     "TriConvUNext-convolution-type-sweep": ["config.use_deformable", "config.use_dilated", "config.use_depthwise", "summary.number_of_parameters"],
     "UNetplusplus-hyperparameter-sweep": ["config.learning_rate", "config.weight_decay"],
-    "TriConvUNext-smaller-hyperparameter-sweep": ["config.learning_rate", "config.weight_decay"]
+    "TriConvUNext-smaller-hyperparameter-sweep": ["config.learning_rate", "config.weight_decay"],
+    "Segformer-hyperparameter-sweep": ["config.learning_rate", "config.weight_decay"]
 }
 
 NAMES = {

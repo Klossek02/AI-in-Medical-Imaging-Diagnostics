@@ -2,14 +2,12 @@ import pandas as pd
 import wandb
 api = wandb.Api(timeout=60)
 
-filters = {"Sweep": "mnispkk9"}
-runs = api.runs("dl-3-mm-jd/AI-in-Medical-Imaging-Diagnostics", filters=filters)
-
 SWEEPS = {
     "TriConvUNext-hyperparameter-sweep": "mnispkk9",
     "TriConvUNext-convolution-type-sweep": "31spdvkd",
     "UNetplusplus-hyperparameter-sweep": "l88c2zec",
-    "TriConvUNext-smaller-hyperparameter-sweep": "pukeohhv"
+    "TriConvUNext-smaller-hyperparameter-sweep": "pukeohhv",
+    "Segformer-hyperparameter-sweep": "0yu0hy8p"
 }
 
 for sweep_name, sweep_id in SWEEPS.items():
