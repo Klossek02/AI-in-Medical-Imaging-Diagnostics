@@ -248,10 +248,11 @@ def train(
             }, step=epoch+1)
 
         # Update learning rate scheduler
-        if config.training.scheduler_type == "ReduceLROnPlateau":
-            scheduler.step(v_loss)
-        else:
-            scheduler.step()
+        if epoch < config.training.scheduler_warmup_epochs:
+            if config.training.scheduler_type == "ReduceLROnPlateau":
+                scheduler.step(v_loss)
+            else:
+                scheduler.step()
         
         current_lr = optimizer.param_groups[0]['lr']
         

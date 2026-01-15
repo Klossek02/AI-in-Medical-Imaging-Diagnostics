@@ -18,7 +18,8 @@ class TrainingConfig(dataclass_wizard.JSONWizard):
     num_epochs: int = 15
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     seed: Optional[int] = None
-    scheduler_type: Literal["ReduceLROnPlateau", "CosineAnnealingLR", "StepLR"] = "ReduceLROnPlateau"
+    scheduler_type: Literal["ReduceLROnPlateau", "CosineAnnealingLR", "StepLR", "PolyLR"] = "ReduceLROnPlateau"
+    scheduler_warmup_epochs: int = 0
     scheduler_params: dict = dataclasses.field(default_factory=lambda: {"patience": 3, "factor": 0.5, "min_lr": 1e-6, "mode": "min"})
     loss_fn_type: Literal["DiceFocalLoss", "DiceLoss", "CrossEntropyLoss"] = "DiceFocalLoss"
     loss_fn_params: dict = dataclasses.field(default_factory=lambda: {"softmax": True, "to_onehot_y": True, "lambda_dice": 2.0, "lambda_focal": 1.0})
