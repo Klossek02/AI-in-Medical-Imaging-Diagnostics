@@ -69,7 +69,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device, config: Config):
     
     return epoch_loss / len(loader), epoch_dice / len(loader), epoch_acc / len(loader), epoch_iou / len(loader)
 
-def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
+def validate(model, loader, loss_fn, device, config: Config, vis_num=3, model_output_callback: callable = None):
     """
     Validates the model on validation data and visualizes few examples of predictions.
     
@@ -100,11 +100,15 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
             
             if masks.ndim == 3:
                 masks = masks.unsqueeze(1)
-
             outputs = sliding_window_inference(inputs=images, predictor=model, roi_size=config.dataloader.crop_size, sw_batch_size=config.dataloader.batch_size, overlap=config.dataloader.sw_overlap, mode="gaussian")
+            preds = torch.argmax(outputs, dim=1)
+
+            if model_output_callback is not None:
+                outputs = model_output_callback(outputs)
+                og_outputs = outputs.clone()
+                og_preds = torch.argmax(og_outputs, dim=1)
             loss = loss_fn(outputs, masks)
             
-            preds = torch.argmax(outputs, dim=1)
             dice, acc, iou = calculate_metrics(config, preds, masks)
             
             val_loss += loss.item()
@@ -115,10 +119,12 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3):
             for i in range(images.shape[0]):
                 if len(visualized_predictions) < vis_num:
                     visualized_predictions.append((images[i, 0].cpu().numpy(), masks[i].cpu().numpy().squeeze(), preds[i].cpu().numpy().squeeze()))
+                    if model_output_callback is not None:
+                        visualized_predictions.append((images[i, 0].cpu().numpy(), masks[i].cpu().numpy().squeeze(), og_preds[i].cpu().numpy().squeeze()))
     
     return val_loss / len(loader), val_dice / len(loader), val_acc / len(loader), val_iou / len(loader), visualized_predictions
 
-def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, device: torch.device, vis_num: int = 3, save_dir: str = "models", use_wandb: bool = False):
+def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, device: torch.device, vis_num: int = 3, save_dir: str = "models", use_wandb: bool = False, model_output_callback: callable = None):
     """
     Tests the model on test data.
     
@@ -135,12 +141,12 @@ def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, devi
 
     # Load model
     model = get_model(config, device=config.training.device)
-    model.load_state_dict(torch.load(os.path.join(save_dir, "best_model.pth")))
+    model.load_state_dict(torch.load(os.path.join(save_dir, "best_model.pth"), map_location=config.training.device))
     model.eval()
 
     # Validate
     test_pred_path = os.path.join(save_dir, "test_predictions")
-    test_loss, test_dice, test_acc, test_iou, visualized_predictions = validate(model, test_loader, loss_fn, device, config, vis_num)
+    test_loss, test_dice, test_acc, test_iou, visualized_predictions = validate(model, test_loader, loss_fn, device, config, vis_num, model_output_callback)
     image_paths = visualize_predictions(visualized_predictions, test_pred_path)
     if use_wandb:
         wandb.log({

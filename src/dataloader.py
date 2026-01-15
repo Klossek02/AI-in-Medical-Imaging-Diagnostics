@@ -117,7 +117,16 @@ def get_transforms(config: Config, mode="train"):
             # Convert to tensors (dtype conversion to torch.long for labels happens in collate_fn)
             ToTensord(keys=["image", "label"]),
         ])
+def load_data(path):
+    return {"image": path, "label": path.replace('images', 'masks')}
 
+def get_osf_dataloader(config: Config):
+    """
+    Function to create dataloader for OSF dataset.
+    """
+    osf_files = [load_data(path) for path in glob.glob(os.path.join(config.preprocessed_data_dir, "**", "images", "*.npy"), recursive=True)]
+    osf_ds = Dataset(data=osf_files, transform=get_transforms(config, "val"))
+    return DataLoader(osf_ds, batch_size=config.dataloader.batch_size, shuffle=False, num_workers=config.dataloader.num_workers, pin_memory=True, collate_fn=collate_fn)
 
 def get_dataloaders(config: Config):
     """
@@ -143,8 +152,6 @@ def get_dataloaders(config: Config):
 
     print(f"Split: training = {len(train_files)}, validation = {len(val_files)}, test = {len(test_files)}")
 
-    def load_data(path):
-        return {"image": path, "label": path.replace('images', 'masks')}
     train_files = [load_data(path) for path in train_files]
     val_files = [load_data(path) for path in val_files]
     test_files = [load_data(path) for path in test_files]

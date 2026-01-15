@@ -11,7 +11,7 @@ from src.config import Config
 def preprocess_data(config: Config) -> int:
     processed_count = 0
     processed_count += preprocess_spider(config)
-    # we decided to not use osf dataset, since it do not have spinal canal and C6/C7 labels
+    # we decided to not use osf dataset, since it do not have spinal canal labels
     # processed_count += preprocess_osf(config)
     processed_count += preprocess_spine_output(config)
     print(f"Processed {processed_count} images")
@@ -102,13 +102,20 @@ def preprocess_osf(config: Config) -> int:
                         part_mask.SetOrigin(combined_mask.GetOrigin())
                         part_mask.SetSpacing(combined_mask.GetSpacing())
                         part_mask.SetDirection(combined_mask.GetDirection())
+                        # if part mask start with "L" then set it to 1
+                        stem = os.path.basename(mf)
+                        if stem.startswith("L"):
+                            part_mask = sitk.BinaryThreshold(part_mask, 1, 255, 1, 0)
+                        # if part mask start with "BS_" then set it to 2
+                        elif stem.startswith("BS_"):
+                            part_mask = sitk.BinaryThreshold(part_mask, 1, 255, 2, 0)
                         combined_mask = sitk.Add(combined_mask, part_mask)
                         masks_merged += 1
                     except: pass
 
 
                 if masks_merged > 0:
-                    combined_mask = sitk.BinaryThreshold(combined_mask, 1, 255, 1, 0)
+                    # combined_mask = sitk.BinaryThreshold(combined_mask, 1, 255, 1, 0)
                     folder_id = os.path.basename(os.path.dirname(parent))
                     scanner = os.path.basename(parent)
                     fname = t2_filename.replace('.nii.gz', '').replace('.nii', '')
