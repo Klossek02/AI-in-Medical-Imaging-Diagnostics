@@ -10,8 +10,7 @@
         "schedulerType": "PolyLR",
         "schedulerWarmupEpochs": 5,
         "schedulerParams": {
-            "power": 1.0,
-            "end_lr": 6e-6
+            "power": 1.0
         }
     },
     "dataloader": {

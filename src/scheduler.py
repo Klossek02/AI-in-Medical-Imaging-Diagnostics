@@ -21,6 +21,7 @@ def get_scheduler(optimizer, config: Config):
     elif config.training.scheduler_type == "PolyLR":
         return optim.lr_scheduler.PolynomialLR(
             optimizer,
+            total_iters=config.training.num_epochs,
             **config.training.scheduler_params
         )
     elif config.training.scheduler_type == "CosineAnnealingLR":
