@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import wandb
 import pandas as pd
 from tqdm import tqdm
@@ -27,13 +28,15 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device, config: Config):
         config: Config object
     
     Returns:
-        Average loss, dice score, accuracy, and IoU for the epoch
+        Average loss, mean dice score, mean IoU score, accuracy, dice score per class, and IoU score per class for the epoch
     """
     model.train()
     epoch_loss = 0.0
     epoch_dice = 0.0
     epoch_acc = 0.0
     epoch_iou = 0.0
+    epoch_dice_per_class = np.zeros(config.model.classes)
+    epoch_iou_per_class = np.zeros(config.model.classes)
     
     loop = tqdm(loader, desc="Training", leave=False)
     
@@ -58,16 +61,22 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device, config: Config):
         
         # Metrics
         preds = torch.argmax(outputs, dim=1)
-        dice, acc, iou = calculate_metrics(config, preds, masks)
+        dice, acc, iou, dice_per_class, iou_per_class = calculate_metrics(config, preds, masks)
         
         epoch_loss += loss.item()
         epoch_dice += dice.item()
         epoch_acc += acc.item()
         epoch_iou += iou.item()
+        dice_per_class = dice_per_class.cpu().numpy()
+        iou_per_class = iou_per_class.cpu().numpy()
+        for i in range(len(dice_per_class)):
+            epoch_dice_per_class[i] += dice_per_class[i]
+        for i in range(len(iou_per_class)):
+            epoch_iou_per_class[i] += iou_per_class[i]
 
         loop.set_postfix(loss=loss.item(), dice=dice.item(), iou=iou.item())
     
-    return epoch_loss / len(loader), epoch_dice / len(loader), epoch_acc / len(loader), epoch_iou / len(loader)
+    return epoch_loss / len(loader), epoch_dice / len(loader), epoch_acc / len(loader), epoch_iou / len(loader), epoch_dice_per_class / len(loader), epoch_iou_per_class / len(loader)
 
 def validate(model, loader, loss_fn, device, config: Config, vis_num=3, model_output_callback: callable = None):
     """
@@ -81,7 +90,7 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3, model_ou
         vis_num: Number of examples to visualize
     
     Returns:
-        Average loss, dice score, accuracy, and IoU for the validation set
+        Average loss, mean dice score, mean IoU score, accuracy, dice score per class, and IoU score per class for the validation set
         Visualized predictions
     """
     model.eval()
@@ -90,6 +99,8 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3, model_ou
     val_acc = 0.0
     val_iou = 0.0
     visualized_predictions = []
+    val_dice_per_class = np.zeros(config.model.classes)
+    val_iou_per_class = np.zeros(config.model.classes)
     
     with torch.no_grad():
         for batch in loader:
@@ -109,12 +120,19 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3, model_ou
                 og_preds = torch.argmax(og_outputs, dim=1)
             loss = loss_fn(outputs, masks)
             
-            dice, acc, iou = calculate_metrics(config, preds, masks)
+            dice, acc, iou, dice_per_class, iou_per_class = calculate_metrics(config, preds, masks)
             
             val_loss += loss.item()
             val_dice += dice.item()
             val_acc += acc.item()
             val_iou += iou.item()
+            # convert tensor to numpy array
+            dice_per_class = dice_per_class.cpu().numpy()
+            iou_per_class = iou_per_class.cpu().numpy()
+            for i in range(len(dice_per_class)):
+                val_dice_per_class[i] += dice_per_class[i]
+            for i in range(len(iou_per_class)):
+                val_iou_per_class[i] += iou_per_class[i]
             # Visualize prediction
             for i in range(images.shape[0]):
                 if len(visualized_predictions) < vis_num:
@@ -122,7 +140,7 @@ def validate(model, loader, loss_fn, device, config: Config, vis_num=3, model_ou
                     if model_output_callback is not None:
                         visualized_predictions.append((images[i, 0].cpu().numpy(), masks[i].cpu().numpy().squeeze(), og_preds[i].cpu().numpy().squeeze()))
     
-    return val_loss / len(loader), val_dice / len(loader), val_acc / len(loader), val_iou / len(loader), visualized_predictions
+    return val_loss / len(loader), val_dice / len(loader), val_acc / len(loader), val_iou / len(loader), val_dice_per_class / len(loader), val_iou_per_class / len(loader), visualized_predictions
 
 def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, device: torch.device, vis_num: int = 3, save_dir: str = "models", use_wandb: bool = False, model_output_callback: callable = None):
     """
@@ -146,7 +164,7 @@ def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, devi
 
     # Validate
     test_pred_path = os.path.join(save_dir, "test_predictions")
-    test_loss, test_dice, test_acc, test_iou, visualized_predictions = validate(model, test_loader, loss_fn, device, config, vis_num, model_output_callback)
+    test_loss, test_dice, test_acc, test_iou, test_dice_per_class, test_iou_per_class, visualized_predictions = validate(model, test_loader, loss_fn, device, config, vis_num, model_output_callback)
     image_paths = visualize_predictions(visualized_predictions, test_pred_path)
     if use_wandb:
         wandb.log({
@@ -158,6 +176,11 @@ def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, devi
             'test/accuracy': test_acc,
             'test/iou': test_iou,
         })
+        for i in range(len(test_dice_per_class)):
+            wandb.log({
+                f'test/dice_per_class_{i}': test_dice_per_class[i],
+                f'test/iou_per_class_{i}': test_iou_per_class[i],
+            })
     # Save test metrics to csv
     test_metrics_df = pd.DataFrame([{
         'run_identifier': config.run_identifier,
@@ -166,11 +189,14 @@ def test(config: Config, test_loader: DataLoader, loss_fn: torch.nn.Module, devi
         'test/accuracy': test_acc,
         'test/iou': test_iou,
     }])
+    for i in range(len(test_dice_per_class)):
+        test_metrics_df[f'test/dice_per_class_{i}'] = test_dice_per_class[i]
+        test_metrics_df[f'test/iou_per_class_{i}'] = test_iou_per_class[i]
     test_metrics_df.to_csv(os.path.join(save_dir, "test_metrics.csv"), index=False)
     print(f"🏁 Test finished!")
-    print(f"🎯 Dice: {test_dice:.4f}")
+    print(f"🎯 Mean Dice: {test_dice:.4f}")
     print(f"✅ Acc: {test_acc:.4f}")
-    print(f"💡 IoU: {test_iou:.4f}")
+    print(f"💡 Mean IoU: {test_iou:.4f}")
     print(f"💾 Saved test predictions to {test_pred_path}")
 
 def train(
@@ -225,18 +251,20 @@ def train(
     train_dices, val_dices = [], []
     train_accs, val_accs = [], []
     train_ious, val_ious = [], []
+    train_dice_per_class, val_dice_per_class = [], []
+    train_iou_per_class, val_iou_per_class = [], []
     print(f"\n🚀 Starting training for {config.training.num_epochs} epochs...")
     
     for epoch in range(config.training.num_epochs):
         print(f"\n--- Epoch {epoch+1}/{config.training.num_epochs} ---")
         
         # Train
-        t_loss, t_dice, t_acc, t_iou = train_one_epoch(
+        t_loss, t_dice, t_acc, t_iou, t_dice_per_class, t_iou_per_class = train_one_epoch(
             model, train_loader, optimizer, loss_fn, device, config
         )
         
         # Validate
-        v_loss, v_dice, v_acc, v_iou, visualized_predictions = validate(
+        v_loss, v_dice, v_acc, v_iou, v_dice_per_class, v_iou_per_class, visualized_predictions = validate(
             model, val_loader, loss_fn, device, config, vis_num=config.training.vis_num
         )
 
@@ -265,6 +293,10 @@ def train(
         val_accs.append(v_acc)
         train_ious.append(t_iou)
         val_ious.append(v_iou)
+        train_dice_per_class.append(t_dice_per_class)
+        val_dice_per_class.append(v_dice_per_class)
+        train_iou_per_class.append(t_iou_per_class)
+        val_iou_per_class.append(v_iou_per_class)
         # Logging
         print(f"📉 Loss -> Train: {t_loss:.4f} | Val: {v_loss:.4f}")
         print(f"🎯 Dice -> Train: {t_dice:.4f} | Val: {v_dice:.4f}")
@@ -286,7 +318,16 @@ def train(
                 'val/iou': v_iou,
                 'learning_rate': current_lr,
             }, step=epoch+1)
-
+            for i in range(len(t_dice_per_class)):
+                wandb.log({
+                    f'train/dice_per_class_{i}': t_dice_per_class[i],
+                    f'train/iou_per_class_{i}': t_iou_per_class[i],
+                }, step=epoch+1)
+            for i in range(len(v_dice_per_class)):
+                wandb.log({
+                    f'val/dice_per_class_{i}': v_dice_per_class[i],
+                    f'val/iou_per_class_{i}': v_iou_per_class[i],
+                }, step=epoch+1)
         # Append metrics to csv
         metrics_df = pd.DataFrame([{
             'epoch': epoch + 1,
@@ -300,6 +341,12 @@ def train(
             'val/iou': v_iou,
             'learning_rate': current_lr,
         }])
+        for i in range(len(t_dice_per_class)):
+            metrics_df[f'train/dice_per_class_{i}'] = t_dice_per_class[i]
+            metrics_df[f'train/iou_per_class_{i}'] = t_iou_per_class[i]
+        for i in range(len(v_dice_per_class)):
+            metrics_df[f'val/dice_per_class_{i}'] = v_dice_per_class[i]
+            metrics_df[f'val/iou_per_class_{i}'] = v_iou_per_class[i]
         metrics_df.to_csv(os.path.join(save_dir, "metrics.csv"), mode='a', header=not os.path.exists(os.path.join(save_dir, "metrics.csv")), index=False)
         
         # Save best model

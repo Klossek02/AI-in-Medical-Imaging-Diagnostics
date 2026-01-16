@@ -13,9 +13,11 @@ def calculate_metrics(config: Config, preds: torch.Tensor, targets: torch.Tensor
         targets: Ground truth masks [B, H, W] or [B, 1, H, W] with class indices (0, 1, 2, ...)
     
     Returns:
-        dice: Dice score (scalar tensor) - mean across all classes
+        mdice: Mean Dice score (scalar tensor) - mean across all classes
         acc: Accuracy (scalar tensor)
-        iou: IoU score (scalar tensor) - mean across all classes
+        miou: Mean IoU score (scalar tensor) - mean across all classes
+        dice_per_class: Dice score per class (list of scalar tensors)
+        iou_per_class: IoU score per class (list of scalar tensors)
     """
     # Remove channel dimension if present
     if targets.ndim == 4:
@@ -36,16 +38,22 @@ def calculate_metrics(config: Config, preds: torch.Tensor, targets: torch.Tensor
     # Initialize metrics with "mean" reduction to get single mean across all classes
     dice_metric = DiceMetric(reduction="mean", num_classes=num_classes)
     mean_iou = MeanIoU(reduction="mean")
-    
+    dice_per_class = DiceMetric(reduction="mean_batch", num_classes=num_classes)
+    iou_per_class = MeanIoU(reduction="mean_batch")
+
     # Update metrics with batch data
     dice_metric(preds_onehot, targets_onehot)
     mean_iou(preds_onehot, targets_onehot)
-    
+    dice_per_class(preds_onehot, targets_onehot)
+    iou_per_class(preds_onehot, targets_onehot)
+
     # Aggregate and get single mean values
-    dice = dice_metric.aggregate()
-    iou = mean_iou.aggregate()
+    mdice = dice_metric.aggregate()
+    miou = mean_iou.aggregate()
+    dice_per_class = dice_per_class.aggregate()
+    iou_per_class = iou_per_class.aggregate()
     
     # Calculate accuracy (doesn't need one-hot encoding)
     acc = accuracy_score(targets.cpu().view(-1).numpy(), preds.cpu().view(-1).numpy())
     
-    return dice, torch.tensor(acc, device=preds.device), iou
+    return mdice, torch.tensor(acc, device=preds.device), miou, dice_per_class, iou_per_class
